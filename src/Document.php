@@ -15,7 +15,7 @@ class Document implements \IteratorAggregate, \ArrayAccess
 	/** @var Collection */
 	protected $collection;
 
-	/** @var array of row data */
+	/** @var array of document data */
 	protected $data;
 
 	/** @var bool */
@@ -64,8 +64,8 @@ class Document implements \IteratorAggregate, \ArrayAccess
 	}
 
 	/**
-	 * Updates row.
-	 * @param  array (column => value)
+	 * Updates document.
+	 * @param  array [column => value]
 	 * @return bool
 	 */
 	public function update($data)
@@ -74,11 +74,11 @@ class Document implements \IteratorAggregate, \ArrayAccess
 
 		if ($collection->update($data)) {
 
-			if (($row = $collection->fetch()) === FALSE) {
+			if (($document = $collection->fetch()) === FALSE) {
 				throw new InvalidStateException('Database refetch failed; item does not exist!');
 			}
 
-			$this->data = $row->data;
+			$this->data = $document->data;
 
 			return TRUE;
 		} else {
@@ -87,8 +87,8 @@ class Document implements \IteratorAggregate, \ArrayAccess
 	}
 
 	/**
-	 * Deletes row.
-	 * @return int number of affected rows
+	 * Deletes document.
+	 * @return int number of affected documents
 	 */
 	public function delete()
 	{

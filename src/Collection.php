@@ -28,7 +28,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 	/** @var Document data read from database in [primary key => Document] format */
 	protected $docs;
 
-	/** @var Document] modifiable data in [primary key => Document] format */
+	/** @var Document modifiable data in [primary key => Document] format */
 	public $data;
 
 	/** @var array of primary key values */
@@ -167,7 +167,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 
 	/**
 	 * Adds order clause, more calls appends to the end.
-	 * @param string for example 'column1, column2 DESC'
+	 * @param strings for example 'item1 ASC', 'item2 DESC'
 	 * @return self
 	 */
 	public function order($items)
@@ -248,7 +248,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 	}
 
 	/**
-	 * Returns maximum value from a column.
+	 * Returns maximum value from a item.
 	 * @param string
 	 * @return int
 	 */
@@ -258,7 +258,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 	}
 
 	/**
-	 * Returns minimum value from a column.
+	 * Returns minimum value from a item.
 	 * @param string
 	 * @return int
 	 */

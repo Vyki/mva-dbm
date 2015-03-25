@@ -26,7 +26,7 @@ class Context extends Nette\Object
 
 	/**
 	 * Returns collection
-	 * @param string $name Collection name
+	 * @param string Collection name
 	 * @return Collection
 	 */
 	public function collection($name)
@@ -41,7 +41,7 @@ class Context extends Nette\Object
 			return new MongoUpdateBatch($this->database->selectCollection($name));
 		}
 
-		throw new NotSupportedException('Batch operations are not available in your version of the PHP Mongo extension. Update it to version 1.5.0 or newer.');
+		throw new NotSupportedException('Batch update is not available in your version of the PHP Mongo extension. Update it to version 1.5.0 or newer.');
 	}
 
 	/** @return MongoInsertBatch */
@@ -51,7 +51,7 @@ class Context extends Nette\Object
 			return new MongoInsertBatch($this->database->selectCollection($name));
 		}
 
-		throw new NotSupportedException('Batch operations are not available in your version of the PHP Mongo extension. Update it to version 1.5.0 or newer.');
+		throw new NotSupportedException('Batch insert is not available in your version of the PHP Mongo extension. Update it to version 1.5.0 or newer.');
 	}
 
 }

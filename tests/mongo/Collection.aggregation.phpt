@@ -18,7 +18,7 @@ class AggregateTest extends TestCase
     }
     
     /** @return Mva\Mongo\Selection */
-    function getSelection()
+    function getCollection()
     {
 		exec("mongoimport --db mva_test --drop --collection test_agr < " . __DIR__ . "/test.json");
         return new Mva\Mongo\Collection('test_agr', $this->database);
@@ -26,7 +26,7 @@ class AggregateTest extends TestCase
     
     function testCount()
     {
-        $collection = $this->getSelection();
+        $collection = $this->getCollection();
         
         $count = $collection->count();
 
@@ -41,7 +41,7 @@ class AggregateTest extends TestCase
     
     function testMaxMinSum()
     {
-        $collection = $this->getSelection();
+        $collection = $this->getCollection();
         
         $max = $collection->max('size');
         $min = $collection->min('size');
@@ -63,7 +63,7 @@ class AggregateTest extends TestCase
     
     function testFullAggregation()
     {
-        $collection = $this->getSelection();
+        $collection = $this->getCollection();
         $collection->select('SUM(size) AS size_total');
         $collection->group('domain');
         $collection->where('size > ?', 10);

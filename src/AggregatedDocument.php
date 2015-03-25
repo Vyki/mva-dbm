@@ -3,7 +3,7 @@
 namespace Mva\Mongo;
 
 /**
- * Representation of single document obtained by the aggregation function
+ * Representation of single document obtained by aggregation function.
  *
  * @author     Roman Vykuka
  */

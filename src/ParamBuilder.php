@@ -94,7 +94,7 @@ class ParamBuilder extends Nette\Object
 	public function addOrder($items)
 	{
 		foreach ((array) $items as $item) {
-			$match = Nette\Utils\Strings::match($item, '#^\s?(\w+(?:\.\w+)*)\s+(ASC|DESC)$#i');
+			$match = Nette\Utils\Strings::match($item, '#^(\w+(?:\.\w+)*)\s+(ASC|DESC)$#i');
 
 			if (!empty($match)) {
 				$this->order[$match[1]] = $match[2] === 'ASC' ? 1 : -1;
@@ -117,7 +117,7 @@ class ParamBuilder extends Nette\Object
 	public function addSelect($items)
 	{
 		foreach ((array) $items as $item) {
-			$match = Nette\Utils\Strings::match($item, '#^(\w+)\(([\w_]+|\*)\)(?:\s+AS\s+([\w_]+))?$#');
+			$match = Nette\Utils\Strings::match($item, '#^(\w+)\(([\w_]+|\*)\)(?:\s+AS\s+([\w_]+))?$#i');
 
 			if (!empty($match)) {
 				$this->addAggregate($match[1], $match[2], isset($match[3]) ? $match[3] : NULL);

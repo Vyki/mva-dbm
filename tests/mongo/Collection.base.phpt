@@ -19,7 +19,7 @@ class FindTest extends TestCase
 	}
 
 	/** @return Mva\Mongo\Selection */
-	function getSelection()
+	function getCollection()
 	{
 		exec("mongoimport --db mva_test --drop --collection test_find < " . __DIR__ . "/test.json");
 		return new Mva\Mongo\Collection('test_find', $this->database);
@@ -27,7 +27,7 @@ class FindTest extends TestCase
 
 	function testWhere()
 	{
-		$collection = $this->getSelection();
+		$collection = $this->getCollection();
 
 		$collection->where('size < ?', 100);
 
@@ -49,7 +49,7 @@ class FindTest extends TestCase
 	
 	function testSelect()
 	{
-		$collection = $this->getSelection();
+		$collection = $this->getCollection();
 
 		$collection->select('domain', 'type');
 
@@ -58,7 +58,7 @@ class FindTest extends TestCase
 
 	function testUnselect()
 	{
-		$collection = $this->getSelection();
+		$collection = $this->getCollection();
 
 		$collection->select('domain', 'type')->unselect('_id');
 
@@ -67,7 +67,7 @@ class FindTest extends TestCase
 
 	function testFetch()
 	{
-		$collection = $this->getSelection();
+		$collection = $this->getCollection();
 
 		$collection->select('domain', 'type', 'name');
 
@@ -82,7 +82,7 @@ class FindTest extends TestCase
 
 	function testFetchAll()
 	{
-		$collection = $this->getSelection();
+		$collection = $this->getCollection();
 
 		$collection->select('domain', 'type', 'name');
 
@@ -101,7 +101,7 @@ class FindTest extends TestCase
 
 	function testFindPairs()
 	{
-		$collection = $this->getSelection();
+		$collection = $this->getCollection();
 
 		$collection->select('domain', 'pr_id')->unselect('_id')->where('pr_id', 1);
 
@@ -118,7 +118,7 @@ class FindTest extends TestCase
 
 	function testFetchAssoc()
 	{
-		$collection = $this->getSelection();
+		$collection = $this->getCollection();
 
 		$collection->select('domain', 'pr_id');
 
@@ -133,7 +133,7 @@ class FindTest extends TestCase
 
 	function testInsert()
 	{
-		$collection = $this->getSelection();
+		$collection = $this->getCollection();
 
 		$insert = [
 			'pr_id' => 3,
@@ -155,7 +155,7 @@ class FindTest extends TestCase
 
 	function testUpdate()
 	{
-		$collection = $this->getSelection();
+		$collection = $this->getCollection();
 
 		$collection->where('name', 'Test 6')->update(['domain' => 'alpha']);
 
@@ -166,7 +166,7 @@ class FindTest extends TestCase
 
 	function testUpdateManipulation()
 	{
-		$collection = $this->getSelection();
+		$collection = $this->getCollection();
 
 		$collection->where('pr_id', 1)->update([
 			'size' => 40,
