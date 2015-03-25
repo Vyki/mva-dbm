@@ -1,0 +1,6 @@
+{ "_id" : { "$oid" : "54ccf3509ab253f598d6b4a0" }, "pr_id" : 2, "name" : "Test 1", "domain" : "alpha", "size" : 10, "points" : [ 10, 12, 33 ], "type" : 9 }
+{ "_id" : { "$oid" : "54ccf3719ab253f598d6b4a1" }, "pr_id" : 2, "name" : "Test 2", "domain" : "alpha", "size" : 20, "points" : [ 11, 12, 23 ], "type" : 10 }
+{ "_id" : { "$oid" : "54ccf4aa9ab253f598d6b4a2" }, "pr_id" : 2, "name" : "Test 3", "domain" : "alpha", "size" : 40, "points" : [ 21, 32, 25 ], "type" : 9 }
+{ "_id" : { "$oid" : "54ccf4e79ab253f598d6b4a3" }, "pr_id" : 1, "name" : "Test 4", "domain" : "alpha", "size" : 22, "points" : [ 71, 42, 95 ], "type" : 11 }
+{ "_id" : { "$oid" : "54ccf5289ab253f598d6b4a4" }, "pr_id" : 1, "name" : "Test 5", "domain" : "beta", "size" : 98, "points" : [ 31, 52, 25 ], "type" : 11 }
+{ "_id" : { "$oid" : "54ccf5639ab253f598d6b4a5" }, "pr_id" : 3, "name" : "Test 6", "domain" : "beta", "size" : 101, "points" : [ 14, 47, 5 ], "type" : 10 }
