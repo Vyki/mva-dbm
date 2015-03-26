@@ -4,7 +4,8 @@ namespace Mva\Mongo;
 
 use Nette,
 	MongoDB,
-	MongoCursor;
+	MongoCursor,
+	Nette\Utils\Strings;
 
 /**
  * Filtered collection representation.
@@ -71,7 +72,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 		$data['$set'] = isset($data['$set']) ? $data['$set'] : array();
 
 		foreach ($data as $index => $value) {
-			if (substr($index, 0, 1) !== '$') {
+			if (!Strings::startsWith($index, '$')) {
 				$data['$set'][$index] = $value;
 				unset($data[$index]);
 			} elseif ($index === '$unset') {
