@@ -68,7 +68,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 
 	public function update($data, $upsert = FALSE, $multi = TRUE)
 	{
-		$data['$set'] = isset($data['$set']) ? $data['$set'] : [];
+		$data['$set'] = isset($data['$set']) ? $data['$set'] : array();
 
 		foreach ($data as $index => $value) {
 			if (substr($index, 0, 1) !== '$') {
@@ -279,7 +279,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 
 	public function fetchPairs($key, $data = NULL)
 	{
-		$ret = [];
+		$ret = array();
 
 		foreach ($this as $doc) {
 			$ret[$doc[$key]] = $data ? $doc[$data] : $doc->toArray();
@@ -290,7 +290,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 
 	public function fetchAssoc($key)
 	{
-		$ret = [];
+		$ret = array();
 
 		foreach ($this as $index => $doc) {
 			if (!isset($doc[$key])) {
@@ -300,7 +300,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 			$value = $doc[$key];
 
 			if (!isset($ret[$value])) {
-				$ret[$value] = [];
+				$ret[$value] = array();
 			}
 
 			$ret[$value][$index] = $doc->toArray();
@@ -337,7 +337,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 			return;
 		}
 
-		$this->docs = [];
+		$this->docs = array();
 
 		if ($this->paramBuilder->aggregate) {
 			$query = $this->paramBuilder->buildAggreregateQuery();

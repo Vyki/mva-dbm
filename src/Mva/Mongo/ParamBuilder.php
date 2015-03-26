@@ -25,25 +25,25 @@ class ParamBuilder extends Nette\Object
 	private $cmd = '$';
 
 	/** @var array of projection items */
-	private $select = [];
+	private $select = array();
 
 	/** @var array of conditions */
-	private $where = [];
+	private $where = array();
 
 	/** @var array of columns to order by */
-	private $order = [];
+	private $order = array();
 
 	/** @var array columns to grouping */
-	private $group = [];
+	private $group = array();
 
 	/** @var array of grouping conditions */
-	private $having = [];
+	private $having = array();
 
 	/** @var array of aggregation functions */
-	private $aggregate = [];
+	private $aggregate = array();
 
 	/** @var array of $SQL like operators and mongo equivalents */
-	private $operators = [
+	private $operators = array(
 		'=' => '=',
 		'<>' => 'ne',
 		'!=' => 'ne',
@@ -53,7 +53,7 @@ class ParamBuilder extends Nette\Object
 		'>' => 'gt',
 		'in' => 'in',
 		'not in' => 'nin'
-	];
+	);
 
 	public function __construct()
 	{
@@ -67,7 +67,7 @@ class ParamBuilder extends Nette\Object
 
 	public function setGroup($items)
 	{
-		$group = [];
+		$group = array();
 
 		foreach ((array) $items as $item) {
 			$group[$item] = $this->formatCmd($item);
@@ -79,7 +79,7 @@ class ParamBuilder extends Nette\Object
 	public function addAggregate($type, $item, $name = NULL)
 	{
 		$ltype = Nette\Utils\Strings::lower($type);
-		$this->aggregate[$name ?: '_' . $item . '_' . $ltype] = [$this->formatCmd($ltype) => ($item == '*') ? 1 : $this->formatCmd($item)];
+		$this->aggregate[$name ?: '_' . $item . '_' . $ltype] = array($this->formatCmd($ltype) => ($item == '*') ? 1 : $this->formatCmd($item));
 	}
 
 	public function getAggregate()
@@ -88,7 +88,7 @@ class ParamBuilder extends Nette\Object
 			return FALSE;
 		}
 
-		return ['_id' => empty($this->group) ? NULL : $this->group] + (array) $this->aggregate;
+		return array('_id' => empty($this->group) ? NULL : $this->group) + (array) $this->aggregate;
 	}
 
 	public function addOrder($items)
@@ -142,7 +142,7 @@ class ParamBuilder extends Nette\Object
 		if (count($this->where) === 1) {
 			return $this->where[0];
 		} else {
-			return empty($this->where) ? [] : [$this->formatCmd('and') => $this->where];
+			return empty($this->where) ? array() : array($this->formatCmd('and') => $this->where);
 		}
 	}
 
@@ -156,7 +156,7 @@ class ParamBuilder extends Nette\Object
 		if (count($this->having) === 1) {
 			return $this->having[0];
 		} else {
-			return empty($this->having) ? [] : [$this->formatCmd('and') => $this->having];
+			return empty($this->having) ? array() : array($this->formatCmd('and') => $this->having);
 		}
 	}
 
@@ -164,31 +164,31 @@ class ParamBuilder extends Nette\Object
 
 	public function buildSelectQuery()
 	{
-		return [$this->getSelect(), $this->getWhere()];
+		return array($this->getSelect(), $this->getWhere());
 	}
 
 	public function buildAggreregateQuery()
 	{
-		$query = [];
+		$query = array();
 
 		if (!empty($select = $this->getSelect())) {
-			$query[] = [$this->formatCmd('project') => $select];
+			$query[] = array($this->formatCmd('project') => $select);
 		}
 
 		if (!empty($where = $this->getWhere())) {
-			$query[] = [$this->formatCmd('match') => $where];
+			$query[] = array($this->formatCmd('match') => $where);
 		}
 
 		if (!empty($aggregate = $this->getAggregate())) {
-			$query[] = [$this->formatCmd('group') => $aggregate];
+			$query[] = array($this->formatCmd('group') => $aggregate);
 		}
 
 		if (!empty($sort = $this->getOrder())) {
-			$query[] = [$this->formatCmd('sort') => $sort];
+			$query[] = array($this->formatCmd('sort') => $sort);
 		}
 
 		if (!empty($having = $this->getHaving())) {
-			$query[] = [$this->formatCmd('match') => $having];
+			$query[] = array($this->formatCmd('match') => $having);
 		}
 
 		return $query;
@@ -216,7 +216,7 @@ class ParamBuilder extends Nette\Object
 		}
 
 		if ($operator === '=') {
-			return [$key => $value];
+			return array($key => $value);
 		}
 
 		//$in and $nin need to reset keys
@@ -234,12 +234,12 @@ class ParamBuilder extends Nette\Object
 			$operator = lcfirst(str_replace(' ', '', ucwords($operator)));
 		}
 
-		return [(string) $key => [$this->formatCmd($operator) => $value]];
+		return array((string) $key => array($this->formatCmd($operator) => $value));
 	}
 
 	private function parseDeepCondition(array $parameters)
 	{
-		$opcond = [];
+		$opcond = array();
 
 		foreach ($parameters as $key => $param) {
 			$ccond = is_int($key) ? $this->parseCondition($param) : $this->parseCondition($key, $param);
@@ -269,7 +269,7 @@ class ParamBuilder extends Nette\Object
 
 		//logical operator [$or => ['a > ?' => 5, 'b <= ?' => 10]]
 		if (!empty($parameters) && ($condition === $this->formatCmd('or') || $condition === $this->formatCmd('and'))) {
-			return [$condition => $this->parseDeepCondition($parameters)];
+			return array($condition => $this->parseDeepCondition($parameters));
 		}
 
 		//IN operator if first element doesn't start by $
@@ -278,7 +278,7 @@ class ParamBuilder extends Nette\Object
 		}
 
 		//other conditions like ['$exists' => TRUE], ['a' => 5]
-		return [$condition => $parameters];
+		return array($condition => $parameters);
 	}
 
 }

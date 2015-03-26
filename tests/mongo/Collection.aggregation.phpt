@@ -32,7 +32,7 @@ class AggregateTest extends TestCase
 
         Assert::equal(6, $count);
 
-        $collection->where(['pr_id' => 2]);
+        $collection->where(array('pr_id' => 2));
 
         $count2 = $collection->count();
 

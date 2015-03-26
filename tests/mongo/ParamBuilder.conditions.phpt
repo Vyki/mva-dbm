@@ -3,18 +3,30 @@
 namespace Test;
 
 use Mva,
-    Tester\Assert;
+	Tester\Assert;
 
 $database = require __DIR__ . "/../bootstrap.php";
 
 $a = new Mva\Mongo\ParamBuilder();
 
-$a->addWhere('$or', ['size > 10', 'score < ?' => 20, 'domain EXISTS' => TRUE]);
+$a->addWhere('$or', array('size > 10', 'score < ?' => 20, 'domain EXISTS' => TRUE));
 
-Assert::same(['$or' => ['size' => ['$gt' => '10'], 'score' => ['$lt' => 20], 'domain' => ['$exists' => TRUE]]], $a->where);
+Assert::same(array(
+	'$or' => array(
+		'size' => array('$gt' => '10'),
+		'score' => array('$lt' => 20),
+		'domain' => array('$exists' => TRUE)
+	)), $a->where);
 
 $b = new Mva\Mongo\ParamBuilder();
 
-$b->addWhere('results ELEM MATCH', ['size' => 10, 'score < ?' => 20, 'width > 10']);
+$b->addWhere('results ELEM MATCH', array('size' => 10, 'score < ?' => 20, 'width > 10'));
 
-Assert::same(['results' => ['$elemMatch' => ['size' => 10, 'score' => ['$lt' => 20], 'width' => ['$gt' => '10']]]], $b->where);
+Assert::same(array(
+	'results' => array(
+		'$elemMatch' => array(
+			'size' => 10,
+			'score' => array('$lt' => 20),
+			'width' => array('$gt' => '10')
+		)
+	)), $b->where);
