@@ -5,7 +5,7 @@ php:
     - 5.6
 
 script:
-    - vendor/bin/tester tests -s -p php -c tests/php.ini
+    - vendor/bin/tester tests -s -p php -c tests/php-unix.ini
 
 after_failure:
     # Print *.actual content
@@ -13,4 +13,5 @@ after_failure:
 
 before_script:
     # Install Nette Tester & Code Checker
+    - pecl install -f mongo-1.3.0
     - composer install --no-interaction --dev --prefer-source
