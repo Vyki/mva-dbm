@@ -84,7 +84,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 		}
 
 		return $this->database->selectCollection($this->name)->update(
-						$this->paramBuilder->where, $data, ['multiple' => (bool) $multi, 'upsert' => (bool) $upsert]
+						$this->paramBuilder->where, $data, array('multiple' => (bool) $multi, 'upsert' => (bool) $upsert)
 		);
 	}
 

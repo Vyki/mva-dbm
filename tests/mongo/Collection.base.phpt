@@ -140,7 +140,7 @@ class FindTest extends TestCase
 			'name' => 'Test 7',
 			'domain' => 'beta',
 			'size' => 101,
-			'points' => [18, 31, 64],
+			'points' => array(18, 31, 64),
 			'type' => 10
 		);
 
