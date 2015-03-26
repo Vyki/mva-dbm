@@ -171,23 +171,23 @@ class ParamBuilder extends Nette\Object
 	{
 		$query = array();
 
-		if (!empty($select = $this->getSelect())) {
+		if (($select = $this->getSelect()) && !empty($select)) {
 			$query[] = array($this->formatCmd('project') => $select);
 		}
 
-		if (!empty($where = $this->getWhere())) {
+		if (($where = $this->getWhere()) && !empty($where)) {
 			$query[] = array($this->formatCmd('match') => $where);
 		}
 
-		if (!empty($aggregate = $this->getAggregate())) {
+		if (($aggregate = $this->getAggregate()) && !empty($aggregate)) {
 			$query[] = array($this->formatCmd('group') => $aggregate);
 		}
 
-		if (!empty($sort = $this->getOrder())) {
+		if (($sort = $this->getOrder()) && !empty($sort)) {
 			$query[] = array($this->formatCmd('sort') => $sort);
 		}
 
-		if (!empty($having = $this->getHaving())) {
+		if (($having = $this->getHaving()) && !empty($having)) {
 			$query[] = array($this->formatCmd('match') => $having);
 		}
 
