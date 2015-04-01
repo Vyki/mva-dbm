@@ -40,6 +40,12 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 
 	/** @var ParamBuilder */
 	protected $paramBuilder;
+	
+	/** @var type Records limit */
+	protected $limit;
+
+	/** @var int Records offset */
+	protected $offset;
 
 	public function __construct($name, MongoDB $mongo)
 	{
@@ -178,6 +184,21 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 		$this->paramBuilder->addOrder(func_get_args());
 		return $this;
 	}
+	
+	/**
+	 * Sets limit, more calls rewrite old values.
+	 * @param int
+	 * @param int
+	 * @return self
+	 */
+	public function limit($limit, $offset = NULL)
+	{
+		$this->emptyResultSet();
+
+		$this->limit = (int) $limit;
+		$this->offset = (int) $offset;
+		return $this;
+	}
 
 	################## aggregation ##################
 
@@ -185,13 +206,14 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 	 * Counts number of documents.
 	 * @return int
 	 */
-	public function count()
+	public function count($column = NULL)
 	{
-		if (is_array($this->data)) {
+		if (!$column) {
+			$this->execute();
 			return count($this->data);
 		}
-
-		return $this->sum('*');
+		
+		return $this->sum($column);
 	}
 
 	/**
@@ -203,6 +225,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 	{
 		$this->emptyResultSet();
 		$this->paramBuilder->setGroup(func_get_args());
+		return $this;
 	}
 
 	/**
@@ -215,6 +238,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 	{
 		$this->emptyResultSet();
 		$this->paramBuilder->addHaving($condition, $parameter);
+		return $this;
 	}
 
 	/**
@@ -353,8 +377,10 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 			$query = $this->paramBuilder->buildSelectQuery();
 			$result = $this->database->selectCollection($this->name)->find($query[1], $query[0]);
 
-			if ($result instanceof MongoCursor && !empty($this->paramBuilder->order)) {
-				$result->sort($this->paramBuilder->order);
+			if ($result instanceof MongoCursor) {
+				empty($this->limit) ?: $result->limit($this->limit);
+				empty($this->offset) ?: $result->skip($this->offset);
+				empty($this->paramBuilder->order) ?: $result->sort($this->paramBuilder->order);
 			}
 
 			foreach ($result as $index => $doc) {

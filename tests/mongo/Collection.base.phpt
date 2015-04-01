@@ -8,7 +8,7 @@ use Mva,
 
 $database = require __DIR__ . "/../bootstrap.php";
 
-class FindTest extends TestCase
+class CollectionBaseTest extends TestCase
 {
 
 	private $database;
@@ -18,10 +18,14 @@ class FindTest extends TestCase
 		$this->database = $database;
 	}
 
+	protected function setUp()
+	{
+		exec("mongoimport --db mva_test --drop --collection test_find < " . __DIR__ . "/test.json");
+	}
+
 	/** @return Mva\Mongo\Selection */
 	function getCollection()
 	{
-		exec("mongoimport --db mva_test --drop --collection test_find < " . __DIR__ . "/test.json");
 		return new Mva\Mongo\Collection('test_find', $this->database);
 	}
 
@@ -46,7 +50,7 @@ class FindTest extends TestCase
 
 		Assert::same($expwhere, $collection->paramBuilder->where);
 	}
-	
+
 	function testSelect()
 	{
 		$collection = $this->getCollection();
@@ -99,7 +103,7 @@ class FindTest extends TestCase
 		Assert::equal(3, $i);
 	}
 
-	function testFindPairs()
+	function testFetchPairs()
 	{
 		$collection = $this->getCollection();
 
@@ -172,25 +176,48 @@ class FindTest extends TestCase
 			'size' => 40,
 			'$set' => array('name' => 'test update'),
 			'$unset' => array('domain'), //or 'domain' for singe item
-			'$rename' => array('type' => 'category') 
+			'$rename' => array('type' => 'category')
 		));
 
 		foreach ($collection as $data) {
 			Assert::same(40, $data['size']);
-			
+
 			Assert::same('test update', $data['name']);
-			
+
 			Assert::false(isset($data['type']));
-			
+
 			Assert::true(isset($data['category']));
-			
+
 			Assert::false(isset($data['domain']));
 		}
 	}
 
+	function testLimit()
+	{
+		$fullrecord = $this->getCollection()->where('pr_id', 2);
+
+		Assert::same(3, $fullrecord->count());
+
+		$limit1 = $this->getCollection()->limit(1, 1);
+		//gets second record
+		$first = $limit1->fetch();
+
+		$limit2 = $this->getCollection()->limit(2);
+		//skip first record
+		$limit2->fetch();
+		//gets second record
+		$second = $limit2->fetch();
+
+		Assert::same((string) $first['_id'], (string) $second['_id']);
+
+		Assert::same(1, $limit1->count());
+
+		Assert::same(2, $limit2->count());
+	}
+
 }
 
-$test = new FindTest($database);
+$test = new CollectionBaseTest($database);
 $test->run();
 
 
