@@ -12,6 +12,8 @@ use Nette,
  * @author Roman Vykuka
  * 
  * @property array $group
+ * @property int $limit
+ * @property int $offset
  * @property-read array $order
  * @property-read array $select
  * @property-read array $where
@@ -42,6 +44,12 @@ class ParamBuilder extends Nette\Object
 	/** @var array of aggregation functions */
 	private $aggregate = array();
 
+	/** @var type Records limit */
+	private $limit;
+
+	/** @var int Records offset */
+	private $offset;
+	
 	/** @var array of $SQL like operators and mongo equivalents */
 	private $operators = array(
 		'=' => '=',
@@ -130,6 +138,26 @@ class ParamBuilder extends Nette\Object
 	public function getSelect()
 	{
 		return $this->select;
+	}
+	
+	public function setLimit($limit)
+	{
+		$this->limit = (int) $limit;
+	}
+	
+	public function getLimit()
+	{
+		return $this->limit;
+	}
+	
+	public function setOffset($offset)
+	{
+		$this->offset = (int) $offset;
+	}
+	
+	public function getOffset()
+	{
+		return $this->offset;
 	}
 
 	public function addWhere($condition, $parameters = array())

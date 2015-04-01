@@ -40,12 +40,6 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 
 	/** @var ParamBuilder */
 	protected $paramBuilder;
-	
-	/** @var type Records limit */
-	protected $limit;
-
-	/** @var int Records offset */
-	protected $offset;
 
 	public function __construct($name, MongoDB $mongo)
 	{
@@ -195,8 +189,8 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 	{
 		$this->emptyResultSet();
 
-		$this->limit = (int) $limit;
-		$this->offset = (int) $offset;
+		$this->paramBuilder->setLimit($limit);
+		$this->paramBuilder->setOffset($offset);
 		return $this;
 	}
 
@@ -378,8 +372,8 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 			$result = $this->database->selectCollection($this->name)->find($query[1], $query[0]);
 
 			if ($result instanceof MongoCursor) {
-				empty($this->limit) ?: $result->limit($this->limit);
-				empty($this->offset) ?: $result->skip($this->offset);
+				empty($this->paramBuilder->limit) ?: $result->limit($this->paramBuilder->limit);
+				empty($this->paramBuilder->offset) ?: $result->skip($this->paramBuilder->offset);
 				empty($this->paramBuilder->order) ?: $result->sort($this->paramBuilder->order);
 			}
 
