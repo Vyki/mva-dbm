@@ -22,7 +22,10 @@
     "autoload": {
 	"psr-0": {
 	    "Mva\\Mongo\\": "src/"
-	}
+	},
+	"classmap": [
+	    "src/Mva/Mongo/exceptions.php"
+	]
     },
     "extra": {
 	"branch-alias": {
