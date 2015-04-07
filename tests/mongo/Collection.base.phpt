@@ -126,7 +126,7 @@ class CollectionBaseTest extends TestCase
 
 		$collection->select('domain', 'pr_id');
 
-		$data = $collection->fetchAssoc('domain');
+		$data = $collection->fetchAssoc('domain[]');
 
 		Assert::same(array('alpha', 'beta'), array_keys($data));
 

@@ -178,7 +178,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 		$this->paramBuilder->addOrder(func_get_args());
 		return $this;
 	}
-	
+
 	/**
 	 * Sets limit, more calls rewrite old values.
 	 * @param int
@@ -206,7 +206,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 			$this->execute();
 			return count($this->data);
 		}
-		
+
 		return $this->sum($column);
 	}
 
@@ -307,25 +307,11 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 		return $ret;
 	}
 
-	public function fetchAssoc($key)
+	public function fetchAssoc($path)
 	{
-		$ret = array();
-
-		foreach ($this as $index => $doc) {
-			if (!isset($doc[$key])) {
-				continue;
-			}
-
-			$value = $doc[$key];
-
-			if (!isset($ret[$value])) {
-				$ret[$value] = array();
-			}
-
-			$ret[$value][$index] = $doc->toArray();
-		}
-
-		return $ret;
+		return Nette\Utils\Arrays::associate(array_map(function(Document $row) {
+			return iterator_to_array($row);
+		}, $this->fetchAll()), $path);
 	}
 
 	public function fetchAll()
