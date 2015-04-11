@@ -13,9 +13,9 @@ $a->addWhere('$or', array('size > 10', 'score < ?' => 20, 'domain EXISTS' => TRU
 
 Assert::same(array(
 	'$or' => array(
-		'size' => array('$gt' => '10'),
-		'score' => array('$lt' => 20),
-		'domain' => array('$exists' => TRUE)
+		array('size' => array('$gt' => '10')),
+		array('score' => array('$lt' => 20)),
+		array('domain' => array('$exists' => TRUE))
 	)), $a->where);
 
 $b = new Mva\Mongo\ParamBuilder();

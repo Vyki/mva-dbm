@@ -49,7 +49,7 @@ class ParamBuilder extends Nette\Object
 
 	/** @var int Records offset */
 	private $offset;
-	
+
 	/** @var array of $SQL like operators and mongo equivalents */
 	private $operators = array(
 		'=' => '=',
@@ -65,7 +65,7 @@ class ParamBuilder extends Nette\Object
 
 	public function __construct()
 	{
-		$this->cmd = ini_get('mongo.cmd') ?: '$';
+		$this->cmd = ini_get('mongo.cmd') ? : '$';
 	}
 
 	public function getGroup()
@@ -87,7 +87,7 @@ class ParamBuilder extends Nette\Object
 	public function addAggregate($type, $item, $name = NULL)
 	{
 		$ltype = Nette\Utils\Strings::lower($type);
-		$this->aggregate[$name ?: '_' . $item . '_' . $ltype] = array($this->formatCmd($ltype) => ($item == '*') ? 1 : $this->formatCmd($item));
+		$this->aggregate[$name ? : '_' . $item . '_' . $ltype] = array($this->formatCmd($ltype) => ($item == '*') ? 1 : $this->formatCmd($item));
 	}
 
 	public function getAggregate()
@@ -139,22 +139,22 @@ class ParamBuilder extends Nette\Object
 	{
 		return $this->select;
 	}
-	
+
 	public function setLimit($limit)
 	{
 		$this->limit = (int) $limit;
 	}
-	
+
 	public function getLimit()
 	{
 		return $this->limit;
 	}
-	
+
 	public function setOffset($offset)
 	{
 		$this->offset = (int) $offset;
 	}
-	
+
 	public function getOffset()
 	{
 		return $this->offset;
@@ -265,14 +265,19 @@ class ParamBuilder extends Nette\Object
 		return array((string) $key => array($this->formatCmd($operator) => $value));
 	}
 
-	private function parseDeepCondition(array $parameters)
+	private function parseDeepCondition(array $parameters, $toArray = FALSE)
 	{
 		$opcond = array();
 
 		foreach ($parameters as $key => $param) {
 			$ccond = is_int($key) ? $this->parseCondition($param) : $this->parseCondition($key, $param);
-			reset($ccond);
-			$opcond[key($ccond)] = current($ccond);
+			
+			if ($toArray) {
+				$opcond[] = $ccond;
+			} else {
+				reset($ccond);
+				$opcond[key($ccond)] = current($ccond);
+			}
 		}
 
 		return $opcond;
@@ -297,7 +302,7 @@ class ParamBuilder extends Nette\Object
 
 		//logical operator [$or => ['a > ?' => 5, 'b <= ?' => 10]]
 		if (!empty($parameters) && ($condition === $this->formatCmd('or') || $condition === $this->formatCmd('and'))) {
-			return array($condition => $this->parseDeepCondition($parameters));
+			return array($condition => $this->parseDeepCondition($parameters, TRUE));
 		}
 
 		//IN operator if first element doesn't start by $

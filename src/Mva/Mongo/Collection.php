@@ -309,9 +309,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 
 	public function fetchAssoc($path)
 	{
-		return Nette\Utils\Arrays::associate(array_map(function(Document $row) {
-			return iterator_to_array($row);
-		}, $this->fetchAll()), $path);
+		return Nette\Utils\Arrays::associate(array_map('iterator_to_array', $this->fetchAll()), $path);
 	}
 
 	public function fetchAll()
