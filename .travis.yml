@@ -26,8 +26,8 @@ before_script:
     - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
     - echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' | sudo tee /etc/apt/sources.list.d/mongodb.list
     - sudo apt-get update
-    - sudo apt-get install -y mongodb-org=2.6.6 mongodb-org-server=2.6.6 mongodb-org-shell=2.6.6 mongodb-org-mongos=2.6.6 mongodb-org-tools=2.6.6
-    - sleep 15
+    - sudo apt-get install -y mongodb-org=2.6.0 mongodb-org-server=2.6.0 mongodb-org-shell=2.6.0 mongodb-org-mongos=2.6.0 mongodb-org-tools=2.6.0
+    - sleep 10
     - mongo --version
-    - printf "\n" | pecl install -f mongo-1.5.0
+    - printf "\n" | pecl install -f mongo-1.6.0
     - composer install --no-interaction --dev --prefer-source

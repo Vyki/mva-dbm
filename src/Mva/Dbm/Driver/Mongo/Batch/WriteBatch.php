@@ -41,10 +41,6 @@ abstract class WriteBatch extends Nette\Object
 
 	public function __construct(MongoDriver $driver, $collection)
 	{
-		if (version_compare(MongoClient::VERSION, '1.5.0') < 0) {
-			throw new NotSupportedException('Write batch is not available in your version of the PHP Mongo extension. Update it to 1.5.0 or newer.');
-		}
-
 		$this->driver = $driver;
 		$this->collection = $collection;
 		$this->preprocessor = $driver->getPreprocessor();
