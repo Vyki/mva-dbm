@@ -7,11 +7,16 @@ if (@!include __DIR__ . '/../vendor/autoload.php') {
 	exit(1);
 }
 
-
 Tester\Environment::setup();
 
 date_default_timezone_set('Europe/Prague');
 
-$connection = new MongoClient();
+$conn = new Mva\Dbm\Connection([
+	'driver' => 'Mongo',
+	'database' => 'mva_test',
+	'client' => new MongoClient()
+]);
 
-return $connection->selectDB('mva_test');
+$conn->connect();
+
+return $conn;

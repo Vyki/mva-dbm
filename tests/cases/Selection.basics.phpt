@@ -1,21 +1,21 @@
 <?php
 
-namespace Test;
+namespace Dbm\Tests;
 
 use Mva,
 	Tester\Assert,
 	Tester\TestCase;
 
-$database = require __DIR__ . "/../bootstrap.php";
+$connection = require __DIR__ . "/../bootstrap.php";
 
 class CollectionBaseTest extends TestCase
 {
 
-	private $database;
+	private $connection;
 
-	function __construct($database)
+	function __construct($connection)
 	{
-		$this->database = $database;
+		$this->connection = $connection;
 	}
 
 	protected function setUp()
@@ -26,29 +26,21 @@ class CollectionBaseTest extends TestCase
 	/** @return Mva\Mongo\Selection */
 	function getCollection()
 	{
-		return new Mva\Mongo\Collection('test_find', $this->database);
+		return new Mva\Dbm\Selection($this->connection, 'test_find');
 	}
 
 	function testWhere()
 	{
 		$collection = $this->getCollection();
 
-		$collection->where('size < ?', 100);
+		$collection->where('size < %i', 100);
 
-		Assert::same($collection->paramBuilder->where, array('size' => array('$lt' => 100)));
+		$collection->where([
+			['pr_id' => 2],
+			['domain' => ['alpha', 'beta']]
+		]);
 
-		$collection->where(array(
-			array('pr_id' => 2),
-			array('domain' => array('alpha', 'beta'))
-		));
-
-		$expwhere = array('$and' => array(
-				array('size' => array('$lt' => 100)),
-				array('pr_id' => 2),
-				array('domain' => array('$in' => array('alpha', 'beta'))),
-		));
-
-		Assert::same($expwhere, $collection->paramBuilder->where);
+		Assert::count(3, $collection->queryBuilder->where);
 	}
 
 	function testSelect()
@@ -57,7 +49,7 @@ class CollectionBaseTest extends TestCase
 
 		$collection->select('domain', 'type');
 
-		Assert::same(array('domain' => TRUE, 'type' => TRUE), $collection->paramBuilder->select);
+		Assert::same(['domain' => TRUE, 'type' => TRUE], $collection->queryBuilder->select);
 	}
 
 	function testUnselect()
@@ -66,7 +58,7 @@ class CollectionBaseTest extends TestCase
 
 		$collection->select('domain', 'type')->unselect('_id');
 
-		Assert::same(array('domain' => TRUE, 'type' => TRUE, '_id' => FALSE), $collection->paramBuilder->select);
+		Assert::same(['domain' => TRUE, 'type' => TRUE, '_id' => FALSE], $collection->queryBuilder->select);
 	}
 
 	function testFetch()
@@ -75,13 +67,13 @@ class CollectionBaseTest extends TestCase
 
 		$collection->select('domain', 'type', 'name');
 
-		$collection->where(array('pr_id' => 2, 'size' => 10));
+		$collection->where(['pr_id' => 2, 'size' => 10]);
 
 		$document = $collection->fetch();
 
-		Assert::true($document instanceof Mva\Mongo\Document);
+		Assert::true($document instanceof Mva\Dbm\Document);
 
-		Assert::same(array('_id', 'name', 'domain', 'type'), array_keys($document->toArray()));
+		Assert::same(['_id', 'name', 'domain', 'type'], array_keys($document->toArray()));
 	}
 
 	function testFetchAll()
@@ -96,8 +88,8 @@ class CollectionBaseTest extends TestCase
 
 		foreach ($collection as $row) {
 			++$i;
-			Assert::true($row instanceof Mva\Mongo\Document);
-			Assert::same(array('_id', 'name', 'domain', 'type'), array_keys($row->toArray()));
+			Assert::true($row instanceof Mva\Dbm\Document);
+			Assert::same(['_id', 'name', 'domain', 'type'], array_keys($row->toArray()));
 		}
 
 		Assert::equal(3, $i);
@@ -109,15 +101,18 @@ class CollectionBaseTest extends TestCase
 
 		$collection->select('domain', 'pr_id')->unselect('_id')->where('pr_id', 1);
 
-		$data1 = $collection->fetchPairs('domain');
+		$expected1 = ['alpha' => ['pr_id' => 1, 'domain' => 'alpha'], 'beta' => ['pr_id' => 1, 'domain' => 'beta']];
+		$expected2 = array_keys($expected1);
 
-		$expected = array('alpha' => array('pr_id' => 1, 'domain' => 'alpha'), 'beta' => array('pr_id' => 1, 'domain' => 'beta'));
+		foreach ($collection->fetchPairs('domain') as $index => $value) {
+			Assert::same($expected1[$index], $value->toArray());
+		}
+		
+		foreach ($collection->fetchPairs(NULL, 'domain') as $index => $value) {
+			Assert::same($expected2[$index], $value);
+		}
 
-		Assert::same($expected, $data1);
-
-		$data2 = $collection->fetchPairs('domain', 'pr_id');
-
-		Assert::same(array('alpha' => 1, 'beta' => 1), $data2);
+		Assert::same(['alpha' => 1, 'beta' => 1], $collection->fetchPairs('domain', 'pr_id'));
 	}
 
 	function testFetchAssoc()
@@ -128,7 +123,7 @@ class CollectionBaseTest extends TestCase
 
 		$data = $collection->fetchAssoc('domain[]');
 
-		Assert::same(array('alpha', 'beta'), array_keys($data));
+		Assert::same(['alpha', 'beta'], array_keys($data));
 
 		Assert::count(4, $data['alpha']);
 
@@ -139,20 +134,24 @@ class CollectionBaseTest extends TestCase
 	{
 		$collection = $this->getCollection();
 
-		$insert = array(
+		$insert = [
 			'pr_id' => 3,
 			'name' => 'Test 7',
 			'domain' => 'beta',
 			'size' => 101,
-			'points' => array(18, 31, 64),
+			'points' => [18, 31, 64],
 			'type' => 10
-		);
+		];
 
 		$ret = $collection->insert($insert);
 
-		Assert::true(array_key_exists('_id', $ret));
+		Assert::true($ret instanceof Mva\Dbm\Document);
 
-		$data = $collection->wherePrimary($ret['_id'])->fetch()->toArray();
+		Assert::true(isset($ret->_id));
+
+		$data = $collection->wherePrimary($ret->_id)->fetch()->toArray();
+
+		$ret = $ret->toArray();
 
 		Assert::same(ksort($ret, SORT_STRING), ksort($data, SORT_STRING));
 	}
@@ -161,34 +160,34 @@ class CollectionBaseTest extends TestCase
 	{
 		$collection = $this->getCollection();
 
-		$collection->where('name', 'Test 6')->update(array('domain' => 'alpha'));
+		$collection->where('name', 'Test 6')->update(['domain' => 'alpha']);
 
 		$data = $collection->fetch();
 
-		Assert::same('alpha', $data['domain']);
+		Assert::same('alpha', $data->domain);
 	}
 
 	function testUpdateManipulation()
 	{
 		$collection = $this->getCollection();
 
-		$collection->where('pr_id', 1)->update(array(
+		$collection->where('pr_id', 1)->update([
 			'size' => 40,
-			'$set' => array('name' => 'test update'),
-			'$unset' => array('domain'), //or 'domain' for singe item
-			'$rename' => array('type' => 'category')
-		));
+			'$set' => ['name' => 'test update'],
+			'$unset' => ['domain'], //or 'domain' for singe item
+			'$rename' => ['type' => 'category']
+		]);
 
 		foreach ($collection as $data) {
-			Assert::same(40, $data['size']);
+			Assert::same(40, $data->size);
 
-			Assert::same('test update', $data['name']);
+			Assert::same('test update', $data->name);
 
-			Assert::false(isset($data['type']));
+			Assert::false(isset($data->type));
 
-			Assert::true(isset($data['category']));
+			Assert::true(isset($data->category));
 
-			Assert::false(isset($data['domain']));
+			Assert::false(isset($data->domain));
 		}
 	}
 
@@ -208,7 +207,7 @@ class CollectionBaseTest extends TestCase
 		//gets second record
 		$second = $limit2->fetch();
 
-		Assert::same((string) $first['_id'], (string) $second['_id']);
+		Assert::same((string) $first->_id, (string) $second->_id);
 
 		Assert::same(1, $limit1->count());
 
@@ -217,7 +216,7 @@ class CollectionBaseTest extends TestCase
 
 }
 
-$test = new CollectionBaseTest($database);
+$test = new CollectionBaseTest($connection);
 $test->run();
 
 

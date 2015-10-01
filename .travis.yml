@@ -1,21 +1,19 @@
 language: php
 php:
-    - 5.3
-    - 5.4
     - 5.5
     - 5.6
+    - 7.0
     - hhvm
     - hhvm-nightly
 
 matrix:
   allow_failures:
+    - php: 7.0
     - php: hhvm
     - php: hhvm-nightly
 
 before_install:
     - composer self-update
-
-services: mongodb
 
 script:
     - vendor/bin/tester tests -s -p php -c tests/php-unix.ini
@@ -25,6 +23,11 @@ after_failure:
     - for i in $(find tests -name \*.actual); do echo "--- $i"; cat $i; echo; echo; done
 
 before_script:
-    # Install Nette Tester & Mongo extension
-    - pecl install -f mongo-1.3.0
+    - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
+    - echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' | sudo tee /etc/apt/sources.list.d/mongodb.list
+    - sudo apt-get update
+    - sudo apt-get install -y mongodb-org=2.6.6 mongodb-org-server=2.6.6 mongodb-org-shell=2.6.6 mongodb-org-mongos=2.6.6 mongodb-org-tools=2.6.6
+    - sleep 15
+    - mongo --version
+    - printf "\n" | pecl install -f mongo-1.5.0
     - composer install --no-interaction --dev --prefer-source

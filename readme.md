@@ -1,6 +1,6 @@
-Mva\Mongo
+Mva\Dbm
 =========
-[![Build Status](https://travis-ci.org/Vyki/mva-mongo.svg?branch=master)](https://travis-ci.org/Vyki/mva-mongo)
-[![Latest stable](https://img.shields.io/packagist/v/mva/mongo.svg)](https://packagist.org/packages/mva/mongo)
+[![Build Status](https://travis-ci.org/Vyki/mva-dbm.svg?branch=master)](https://travis-ci.org/Vyki/mva-dbm)
+[![Latest stable](https://img.shields.io/packagist/v/mva/dbm.svg)](https://packagist.org/packages/mva/dbm)
 
-Mva\Mongo provides a powerful layer for accessing your mongoDB easily.
+Mva\Dbm provides a powerful layer for accessing your mongoDB easily.

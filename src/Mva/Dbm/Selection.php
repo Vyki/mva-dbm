@@ -1,29 +1,24 @@
 <?php
 
-namespace Mva\Mongo;
+namespace Mva\Dbm;
 
 use Nette,
-	MongoDB,
-	MongoCursor,
-	Nette\Utils\Strings;
+	MongoCursor;
 
 /**
  * Filtered collection representation.
  * Collection is based on the library Nette\Database http://doc.nette.org/en/2.3/database by Jakub Vrana, Jan Skrasek, David Grudl
  *
  * @author Roman Vykuka
- *
+ * 
  */
-class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Countable
+class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Countable
 {
 
 	/** @var string */
 	protected $primary = '_id';
 
-	/** @var string */
-	protected $name;
-
-	/** @var \MongoCursor|NULL|array */
+	/** @var MongoCursor|NULL|array */
 	protected $result;
 
 	/** @var Document data read from database in [primary key => Document] format */
@@ -33,33 +28,33 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 	public $data;
 
 	/** @var array of primary key values */
-	protected $keys = array();
+	protected $keys = [];
 
-	/** @var MongoDB */
-	protected $database;
+	/** @var Connection */
+	protected $connection;
 
-	/** @var ParamBuilder */
-	protected $paramBuilder;
+	/** @var Driver\Mongo\MongoQueryBuilder */
+	protected $queryBuilder;
 
-	public function __construct($name, MongoDB $mongo)
+	public function __construct(Connection $connection, $name)
 	{
-		$this->name = $name;
-		$this->database = $mongo;
-		$this->paramBuilder = new ParamBuilder;
+		$this->connection = $connection;
+		$this->queryBuilder = $connection->getQueryBuilder();
+		$this->queryBuilder->setFrom($name);
 	}
 
 	public function __clone()
 	{
-		$this->paramBuilder = clone $this->paramBuilder;
+		$this->queryBuilder = clone $this->queryBuilder;
 	}
 
 	/**
 	 * @internal
-	 * @return ParamBuilder
+	 * @return QueryBuilder
 	 */
-	public function getParamBuilder()
+	public function getQueryBuilder()
 	{
-		return $this->paramBuilder;
+		return $this->queryBuilder;
 	}
 
 	public function getPrimary()
@@ -69,37 +64,27 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 
 	public function update($data, $upsert = FALSE, $multi = TRUE)
 	{
-		$data['$set'] = isset($data['$set']) ? $data['$set'] : array();
-
-		foreach ($data as $index => $value) {
-			if (!Strings::startsWith($index, '$')) {
-				$data['$set'][$index] = $value;
-				unset($data[$index]);
-			} elseif ($index === '$unset') {
-				$data['$unset'] = array_fill_keys(array_values((array) $data['$unset']), '');
-			}
-		}
-
-		if (empty($data['$set'])) {
-			unset($data['$set']);
-		}
-
-		return $this->database->selectCollection($this->name)->update(
-						$this->paramBuilder->where, $data, array('multiple' => (bool) $multi, 'upsert' => (bool) $upsert)
-		);
+		return $this->connection->query->update($this->queryBuilder->from, $data, $this->queryBuilder->where, [
+					'multiple' => (bool) $multi, 'upsert' => (bool) $upsert
+		]);
 	}
 
+	/** @return Document|bool */
 	public function insert($data)
 	{
-		$ret = $this->database->selectCollection($this->name)->insert($data);
+		$data = (array) $data;
 
-		if ($ret && isset($data['_id'])) {
+		$ret = $this->connection->query->insert($this->queryBuilder->from, $data);
+
+		if ($ret && isset($data[$this->primary])) {
+			$doc = $this->createDocument($data);
+
 			if ($this->docs !== NULL) {
-				$this->docs[$data['_id']] = $data;
-				$this->data[$data['_id']] = $data;
+				$this->docs[$data[$this->primary]] = $doc;
+				$this->data[$data[$this->primary]] = $doc;
 			}
 
-			return $data;
+			return $doc;
 		}
 
 		return FALSE;
@@ -107,7 +92,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 
 	public function delete()
 	{
-		return $this->database->selectCollection($this->name)->remove($this->paramBuilder->where);
+		return $this->connection->query->delete($this->queryBuilder->from, $this->queryBuilder->where);
 	}
 
 	/**
@@ -116,21 +101,10 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 	 * @param mixed
 	 * @return self
 	 */
-	public function where($condition, $parameters = array())
+	public function where($condition, $parameters = [])
 	{
-		if (is_array($condition) && $parameters === array()) {
-			foreach ($condition as $key => $val) {
-				if (is_int($key)) {
-					$this->where($val);
-				} else {
-					$this->where($key, $val);
-				}
-			}
-			return $this;
-		}
-
 		$this->emptyResultSet();
-		$this->paramBuilder->addWhere($condition, $parameters);
+		$this->queryBuilder->addWhere($condition, $parameters);
 		return $this;
 	}
 
@@ -149,7 +123,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 	{
 		$this->emptyResultSet();
 
-		$this->paramBuilder->addSelect(func_get_args());
+		$this->queryBuilder->addSelect(func_get_args());
 		return $this;
 	}
 
@@ -162,7 +136,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 	{
 		$this->emptyResultSet();
 
-		$this->paramBuilder->addUnselect(func_get_args());
+		$this->queryBuilder->addUnselect(func_get_args());
 		return $this;
 	}
 
@@ -175,7 +149,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 	{
 		$this->emptyResultSet();
 
-		$this->paramBuilder->addOrder(func_get_args());
+		$this->queryBuilder->addOrder(func_get_args());
 		return $this;
 	}
 
@@ -189,8 +163,8 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 	{
 		$this->emptyResultSet();
 
-		$this->paramBuilder->setLimit($limit);
-		$this->paramBuilder->setOffset($offset);
+		$this->queryBuilder->setLimit($limit);
+		($offset !== NULL) && $this->queryBuilder->setOffset($offset);
 		return $this;
 	}
 
@@ -218,7 +192,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 	public function group($items)
 	{
 		$this->emptyResultSet();
-		$this->paramBuilder->setGroup(func_get_args());
+		$this->queryBuilder->setGroup(func_get_args());
 		return $this;
 	}
 
@@ -228,10 +202,10 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 	 * @param mixed
 	 * @return self
 	 */
-	public function having($condition, $parameter = array())
+	public function having($condition, $parameter = [])
 	{
 		$this->emptyResultSet();
-		$this->paramBuilder->addHaving($condition, $parameter);
+		$this->queryBuilder->addHaving($condition, $parameter);
 		return $this;
 	}
 
@@ -243,14 +217,14 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 	 */
 	public function aggregate($type, $item)
 	{
-		$collection = $this->createCollectionInstance();
+		$selection = new Selection($this->connection, $this->queryBuilder->from);
 
-		$collection->getParamBuilder()->importConditions($this->getParamBuilder());
+		$selection->queryBuilder->importConditions($this->queryBuilder);
 
-		$collection->select("$type($item) AS _gres");
+		$selection->select("$type($item) AS _gres");
 
-		if (($result = $collection->fetch()) && isset($result['_gres'])) {
-			return $result['_gres'];
+		if (($result = $selection->fetch()) && isset($result->_gres)) {
+			return $result->_gres;
 		}
 
 		return NULL;
@@ -288,6 +262,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 
 	################## quick access ##################
 
+	/** @return Document */
 	public function fetch()
 	{
 		$this->execute();
@@ -296,22 +271,42 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 		return $return;
 	}
 
-	public function fetchPairs($key, $data = NULL)
+	/**
+	 * @param  string|NULL $key
+	 * @param  string|NULL $value
+	 * @return array
+	 */
+	public function fetchPairs($key = NULL, $value = NULL)
 	{
-		$ret = array();
-
-		foreach ($this as $doc) {
-			$ret[$doc[$key]] = $data ? $doc[$data] : $doc->toArray();
+		if ($key === NULL && $value === NULL) {
+			throw new InvalidArgumentException('Selection::fetchPairs() requires defined key or value.');
 		}
 
-		return $ret;
+		$return = [];
+
+		if ($key === NULL) {
+			foreach ($this as $row) {
+				$return[] = $row->{$value};
+			}
+		} elseif ($value === NULL) {
+			foreach ($this as $row) {
+				$return[is_object($row->{$key}) ? (string) $row->{$key} : $row->{$key}] = $row;
+			}
+		} else {
+			foreach ($this as $row) {
+				$return[is_object($row->{$key}) ? (string) $row->{$key} : $row->{$key}] = $row->{$value};
+			}
+		}
+
+		return $return;
 	}
 
 	public function fetchAssoc($path)
 	{
-		return Nette\Utils\Arrays::associate(array_map('iterator_to_array', $this->fetchAll()), $path);
+		return Nette\Utils\Arrays::associate($this->fetchAll(), $path);
 	}
 
+	/** @return Document[] */
 	public function fetchAll()
 	{
 		return iterator_to_array($this);
@@ -321,17 +316,7 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 
 	protected function createDocument(array $doc)
 	{
-		return new Document($doc, $this);
-	}
-
-	protected function createAggregatedDocument(array $result)
-	{
-		return new AggregatedDocument($result, $this);
-	}
-
-	public function createCollectionInstance($collection = NULL)
-	{
-		return new Collection($collection ?: $this->name, $this->database);
+		return new Document($doc);
 	}
 
 	protected function execute()
@@ -340,30 +325,14 @@ class Collection extends Nette\Object implements \Iterator, \ArrayAccess, \Count
 			return;
 		}
 
-		$this->docs = array();
+		$this->docs = [];
 
-		if ($this->paramBuilder->aggregate) {
-			$query = $this->paramBuilder->buildAggreregateQuery();
-			$result = $this->database->selectCollection($this->name)->aggregate($query);
+		list($fields, $criteria, $options) = $this->queryBuilder->buildSelectQuery();
 
-			if ($result['ok'] == 1 && isset($result['result'])) {
-				foreach ($result['result'] as $doc) {
-					$this->docs[] = $this->createAggregatedDocument($doc);
-				}
-			}
-		} else {
-			$query = $this->paramBuilder->buildSelectQuery();
-			$result = $this->database->selectCollection($this->name)->find($query[1], $query[0]);
+		$result = $this->connection->query->select($this->queryBuilder->from, $fields, $criteria, $options);
 
-			if ($result instanceof MongoCursor) {
-				empty($this->paramBuilder->limit) ?: $result->limit($this->paramBuilder->limit);
-				empty($this->paramBuilder->offset) ?: $result->skip($this->paramBuilder->offset);
-				empty($this->paramBuilder->order) ?: $result->sort($this->paramBuilder->order);
-			}
-
-			foreach ($result as $index => $doc) {
-				$this->docs[$index] = $this->createDocument($doc);
-			}
+		foreach ($result as $index => $doc) {
+			$this->docs[$index] = $this->createDocument($doc);
 		}
 
 		$this->data = $this->docs;

@@ -1,3 +1,3 @@
 #!/bin/bash
 
-php "../vendor/nette/tester/Tester/tester" mongo -c php-unix.ini
+php "../vendor/nette/tester/Tester/tester" cases -c php-unix.ini

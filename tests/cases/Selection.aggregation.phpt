@@ -1,21 +1,21 @@
 <?php
 
-namespace Test;
+namespace Dbm\Tests;
 
 use Mva,
 	Tester\Assert,
 	Tester\TestCase;
 
-$database = require __DIR__ . "/../bootstrap.php";
+$connection = require __DIR__ . "/../bootstrap.php";
 
 class CollectionAggregationTest extends TestCase
 {
 
-	private $database;
+	private $connection;
 
-	function __construct($database)
+	function __construct($connection)
 	{
-		$this->database = $database;
+		$this->connection = $connection;
 	}
 
 	protected function setUp()
@@ -26,7 +26,7 @@ class CollectionAggregationTest extends TestCase
 	/** @return Mva\Mongo\Selection */
 	function getCollection()
 	{
-		return new Mva\Mongo\Collection('test_agr', $this->database);
+		return new Mva\Dbm\Selection($this->connection, 'test_agr');
 	}
 
 	function testCount()
@@ -37,7 +37,7 @@ class CollectionAggregationTest extends TestCase
 
 		Assert::equal(6, $count);
 
-		$collection->where(array('pr_id' => 2));
+		$collection->where(['pr_id' => 2]);
 
 		$count2 = $collection->count();
 
@@ -71,34 +71,34 @@ class CollectionAggregationTest extends TestCase
 		$collection = $this->getCollection();
 		$collection->select('SUM(size) AS size_total');
 		$collection->group('domain');
-		$collection->where('size > ?', 10);
+		$collection->where('size > %i', 10);
 
 		$beta = $collection->fetch();
-
-		Assert::true($beta instanceof Mva\Mongo\AggregatedDocument);
-
-		Assert::equal('beta', $beta['domain']);
-		Assert::equal(199, $beta['size_total']);
+		
+		Assert::true($beta instanceof Mva\Dbm\Document);
+		
+		Assert::equal('beta', $beta->domain);
+		Assert::equal(199, $beta->size_total);
 
 		$alpha = $collection->fetch();
 
-		Assert::equal('alpha', $alpha['domain']);
-		Assert::equal(82, $alpha['size_total']);
+		Assert::equal('alpha', $alpha->domain);
+		Assert::equal(82, $alpha->size_total);
 
 		Assert::equal(2, $collection->count());
 
-		$collection->having('size_total > ?', 82);
+		$collection->having('size_total > %i', 82);
 
 		$having_test = $collection->fetch();
 
 		Assert::equal(1, $collection->count());
-		Assert::equal('beta', $having_test['domain']);
-		Assert::equal(199, $having_test['size_total']);
+		Assert::equal('beta', $having_test->domain);
+		Assert::equal(199, $having_test->size_total);
 	}
 
 }
 
-$test = new CollectionAggregationTest($database);
+$test = new CollectionAggregationTest($connection);
 $test->run();
 
 
