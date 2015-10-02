@@ -24,7 +24,7 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 	 * @return MongoResult 
 	 */
 	public function select($collection, $fields = [], array $criteria = [], array $options = [])
-	{		
+	{
 		//identifies aggaregation pipelines
 		if (isset($fields[0]) && is_array($fields[0])) {
 			return $this->selectAggregate($collection, $fields);
@@ -39,7 +39,7 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 		}
 
 		$select = $this->preprocessor->processSelect((array) $fields);
-		
+
 		$result = $this->driver->getCollection($collection)->find($criteria, $select);
 
 		if (isset($options[self::SELECT_LIMIT])) {
@@ -74,7 +74,11 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 
 	public function selectDistinct($collection, $item, array $criteria = [])
 	{
-		$result = $this->driver->getCollection($collection)->distinct($item, $criteria);
+		$result = (array) $this->driver->getCollection($collection)->distinct($item, empty($criteria) ? NULL : $criteria);
+
+		foreach ($result as $key => $row) {
+			$result[$key] = [$item => $row];
+		}
 
 		return new MongoResult($result);
 	}

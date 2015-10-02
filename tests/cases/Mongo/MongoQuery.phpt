@@ -4,7 +4,8 @@ namespace Dbm\Tests\Mongo;
 
 use Mva,
 	Tester\Assert,
-	Tester\TestCase;
+	Tester\TestCase,
+	Mva\Dbm\Driver\Mongo\MongoQueryBuilder;
 
 $connection = require __DIR__ . "/../../bootstrap.php";
 
@@ -40,6 +41,42 @@ class MongoQueryTest extends TestCase
 		Assert::same([['name' => 'Test 5', 'domain' => 'beta'], ['name' => 'Test 6', 'domain' => 'beta']], $data);
 	}
 
+	function testDistinct()
+	{
+		$query = $this->getQuery();
+
+		$result = $query->select('test_query', ['distinct' => 'domain']);
+
+		$data = $result->fetchAll();
+
+		Assert::same([['domain' => 'alpha'], ['domain' => 'beta']], $data);
+	}
+
+	function testAggregation()
+	{
+		$query = $this->getQuery();
+
+		$builder = new MongoQueryBuilder();
+		$builder->addSelect('SUM(size) AS size_total');
+		$builder->setGroup('domain');
+		$builder->addWhere('size > %i', 10);
+
+		$result1 = $query->select('test_query', $builder->buildAggreregateQuery());
+
+		Assert::same([
+			['size_total' => 199, 'domain' => 'beta'],
+			['size_total' => 82, 'domain' => 'alpha'],
+		], $result1->fetchAll());
+		
+		$builder->addHaving('size_total > %i', 82);
+		
+		$result2 = $query->select('test_query', $builder->buildAggreregateQuery());
+		
+		Assert::same([
+			['size_total' => 199, 'domain' => 'beta'],
+		], $result2->fetchAll());
+	}
+
 	function testInsert()
 	{
 		$query = $this->getQuery();
@@ -54,7 +91,7 @@ class MongoQueryTest extends TestCase
 		];
 
 		$ret = $query->insert('test_query', $insert);
-		
+
 		Assert::truthy($ret);
 
 		$result = $query->select('test_query', ['!_id'], ['_id = %oid' => $insert['_id']])->fetch();
