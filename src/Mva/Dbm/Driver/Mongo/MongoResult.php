@@ -42,6 +42,17 @@ class MongoResult implements IteratorAggregate
 		return iterator_to_array($this);
 	}
 
+	public function fetchField()
+	{
+		if ($row = $this->fetch()) {
+			foreach ($row as $value) {
+				return $value;
+			}
+		}
+		
+		return NULL;
+	}
+
 	public function normalizeDocument(array $document)
 	{
 		if (isset($document['_id']) && is_array($document['_id'])) {

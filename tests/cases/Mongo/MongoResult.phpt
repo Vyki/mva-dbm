@@ -3,7 +3,6 @@
 namespace Dbm\Tests\Mongo;
 
 use DateTime,
-	ArrayIterator,
 	Tester\Assert,
 	Mva\Dbm\Driver;
 
@@ -46,7 +45,7 @@ $row3 = [
 ];
 
 // test find result
-$data1 = new ArrayIterator(['roman' => $row1, 'vendy' => $row2]);
+$data1 = ['roman' => $row1, 'vendy' => $row2];
 $result1 = new Driver\Mongo\MongoResult($data1);
 
 // test fetch and normalize
@@ -58,6 +57,11 @@ Assert::same('Vendy', $item2['name']);
 
 // test iterator and normalize
 foreach ($result1 as $row) {
+	assert_normalize($row);
+}
+
+// test fetchAll
+foreach ($result1->fetchAll() as $row) {
 	assert_normalize($row);
 }
 
@@ -75,3 +79,8 @@ Assert::same([
 	'name' => 'Vendy', 
 	'count' => 4
 ], $result2->fetch());
+
+// test fetchField
+$data3 = [$row3];
+$result3 = new Driver\Mongo\MongoResult($data3);
+Assert::same(25, $result3->fetchField());
