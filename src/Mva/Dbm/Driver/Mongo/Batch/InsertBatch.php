@@ -2,7 +2,8 @@
 
 namespace Mva\Dbm\Driver\Mongo\Batch;
 
-use MongoInsertBatch;
+use MongoInsertBatch,	
+	Mva\Dbm\NotSupportedException;
 
 /**
  * @author Roman Vykuka
