@@ -48,7 +48,7 @@ Assert::same(['domain' => TRUE, 'index' => TRUE, 'coord' => TRUE], $a->select);
 
 //unselect test
 $a->addUnselect('_id');
-Assert::same(['domain' => TRUE, 'index' => TRUE, 'coord' => TRUE,  '_id' => FALSE], $a->select);
+Assert::same(['domain' => TRUE, 'index' => TRUE, 'coord' => TRUE, '_id' => FALSE], $a->select);
 
 $a->addUnselect(['index', 'pr_id']);
 Assert::same(['domain' => TRUE, 'index' => FALSE, 'coord' => TRUE, '_id' => FALSE, 'pr_id' => FALSE], $a->select);
@@ -91,3 +91,19 @@ Assert::same(['distinct' => 'domain'], $b->getSelect());
 
 $b->addSelect('coord');
 Assert::same(['coord' => TRUE], $b->getSelect());
+Assert::same([['coord' => TRUE], [], []], $b->buildSelectQuery());
+
+$b->addOrder('name ASC');
+
+//limit and offset
+$b->setLimit(2);
+$b->setOffset(5);
+Assert::same(2, $b->getLimit());
+Assert::same(5, $b->getOffset());
+
+Assert::same([['coord' => TRUE], [], ['limit' => 2, 'skip' => 5, 'sort' => ['name' => 1]]], $b->buildSelectQuery());
+
+$b->setLimit(NULL);
+$b->setOffset(NULL);
+
+Assert::same([['coord' => TRUE], [], ['sort' => ['name' => 1]]], $b->buildSelectQuery());

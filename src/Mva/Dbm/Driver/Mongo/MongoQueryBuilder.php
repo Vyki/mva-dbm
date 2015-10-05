@@ -211,11 +211,21 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 			return [$this->buildAggreregateQuery(), [], []];
 		}
 
-		return [$this->getSelect(), $this->getWhere(), [
-			IQuery::SELECT_LIMIT => $this->getLimit(),
-			IQuery::SELECT_OFFSET => $this->getOffset(),
-			IQuery::SELECT_ORDER => $this->getOrder()
-		]];
+		$options = [];
+
+		if ($limit = $this->getLimit()) {
+			$options[IQuery::SELECT_LIMIT] = $limit;
+		}
+
+		if ($offset = $this->getOffset()) {
+			$options[IQuery::SELECT_OFFSET] = $offset;
+		}
+
+		if (($sort = $this->getOrder()) && !empty($sort)) {
+			$options[IQuery::SELECT_ORDER] = $sort;
+		}
+
+		return [$this->getSelect(), $this->getWhere(), $options];
 	}
 
 	public function buildAggreregateQuery()
@@ -228,7 +238,7 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 
 		if (($where = $this->getWhere()) && !empty($where)) {
 			$query[] = [$this->formatCmd('match') => $where];
-		}	
+		}
 
 		if (($aggregate = $this->getAggregate()) && !empty($aggregate)) {
 			$query[] = [$this->formatCmd('group') => $aggregate];
@@ -241,7 +251,7 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 		if (($having = $this->getHaving()) && !empty($having)) {
 			$query[] = [$this->formatCmd('match') => $having];
 		}
-		
+
 		if ($offset = $this->getOffset()) {
 			$query[] = [$this->formatCmd('skip') => $offset];
 		}
