@@ -263,16 +263,6 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 		return $query;
 	}
 
-	public function buildUpdateQuery()
-	{
-		return [$this->getUpdate(), $this->getWhere()];
-	}
-
-	public function buildInsertQuery()
-	{
-		throw new Nette\NotImplementedException('Insert query is not implemented in MongoQueryBilder class!');
-	}
-
 	public function importConditions(IQueryBuilder $builder)
 	{
 		$this->where = $builder->where;
