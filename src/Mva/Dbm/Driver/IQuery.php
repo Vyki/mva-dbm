@@ -9,6 +9,7 @@ interface IQuery
 	const SELECT_OFFSET = 'skip';
 	const SELECT_ORDER = 'sort';
 	const SELECT_DISTINCT = 'distinct';
+	const SELECT_COUNT = 'count';
 
 	function select($collection, $fields = [], array $criteria = [], array $options = []);
 

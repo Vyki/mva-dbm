@@ -5,6 +5,7 @@ namespace Dbm\Tests\Mongo;
 use Mva,
 	Tester\Assert,
 	Tester\TestCase,
+	Mva\Dbm\Driver\IQuery,
 	Mva\Dbm\Driver\Mongo\MongoQueryBuilder;
 
 $connection = require __DIR__ . "/../../bootstrap.php";
@@ -45,13 +46,22 @@ class MongoQueryTest extends TestCase
 	{
 		$query = $this->getQuery();
 
-		$result = $query->select('test_query', ['distinct' => 'domain']);
+		$result = $query->select('test_query', [IQuery::SELECT_DISTINCT => 'domain']);
 
 		$data = $result->fetchAll();
 
 		Assert::same([['domain' => 'alpha'], ['domain' => 'beta']], $data);
 	}
+	
+	function testCount()
+	{
+		$query = $this->getQuery();
 
+		$result = $query->select('test_query', IQuery::SELECT_COUNT, ['domain' => 'alpha']);
+
+		Assert::same($result, 4);
+	}
+	
 	function testAggregation()
 	{
 		$query = $this->getQuery();
@@ -76,7 +86,20 @@ class MongoQueryTest extends TestCase
 			['size_total' => 199, 'domain' => 'beta'],
 		], $result2->fetchAll());
 	}
+	
+	function testAggregationCount()
+	{
+		$query = $this->getQuery();
 
+		$builder = new MongoQueryBuilder();
+		
+		$builder->addSelect('SUM(*) AS count');
+		
+		$result1 = $query->select('test_query', $builder->buildAggreregateQuery())->fetch();
+				
+		Assert::same(6, $result1['count']);
+	}
+	
 	function testInsert()
 	{
 		$query = $this->getQuery();

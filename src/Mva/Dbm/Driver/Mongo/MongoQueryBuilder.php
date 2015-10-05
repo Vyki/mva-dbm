@@ -56,19 +56,6 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 	/** @var int Records offset */
 	private $offset;
 
-	/** @var array of $SQL like operators and mongo equivalents */
-	private $operators = [
-		'=' => '=',
-		'<>' => 'ne',
-		'!=' => 'ne',
-		'<=' => 'lte',
-		'>=' => 'gte',
-		'<' => 'lt',
-		'>' => 'gt',
-		'in' => 'in',
-		'not in' => 'nin'
-	];
-
 	public function __construct($name = '')
 	{
 		$this->cmd = ini_get('mongo.cmd') ? : '$';
@@ -241,7 +228,7 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 
 		if (($where = $this->getWhere()) && !empty($where)) {
 			$query[] = [$this->formatCmd('match') => $where];
-		}
+		}	
 
 		if (($aggregate = $this->getAggregate()) && !empty($aggregate)) {
 			$query[] = [$this->formatCmd('group') => $aggregate];
@@ -253,6 +240,10 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 
 		if (($having = $this->getHaving()) && !empty($having)) {
 			$query[] = [$this->formatCmd('match') => $having];
+		}
+		
+		if ($offset = $this->getOffset()) {
+			$query[] = [$this->formatCmd('skip') => $offset];
 		}
 
 		if ($limit = $this->getLimit()) {

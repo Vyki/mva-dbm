@@ -22,6 +22,10 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 
 	/**
 	 * @return MongoResult 
+	 * @param string
+	 * @param array|string ['id' => TRUE, 'name' => FALSE, ...] | ['id', '!name', ...] | $pipeline[[...], [...]] | ['distinct' => 'column'] | 'count'
+	 * @param array
+	 * @param array ['limit' => 10, 'skip' => 3, ...]	 
 	 */
 	public function select($collection, $fields = [], array $criteria = [], array $options = [])
 	{
@@ -34,10 +38,14 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 			$criteria = $this->preprocessor->processCondition($criteria);
 		}
 		//identifies distinct
-		if (isset($fields[self::SELECT_DISTINCT])) {
+		if (isset($fields[self::SELECT_DISTINCT]) && is_string($fields[self::SELECT_DISTINCT])) {
 			return $this->selectDistinct($collection, (string) $fields[self::SELECT_DISTINCT], $criteria);
 		}
-
+		
+		if ($fields === self::SELECT_COUNT) {
+			return $this->driver->getCollection($collection)->count($criteria, $options);
+		}
+		
 		$select = $this->preprocessor->processSelect((array) $fields);
 
 		$result = $this->driver->getCollection($collection)->find($criteria, $select);
