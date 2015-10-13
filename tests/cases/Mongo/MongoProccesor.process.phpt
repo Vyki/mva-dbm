@@ -21,11 +21,11 @@ class MongoProcessor_ConditionsTest extends TestCase
 	{
 		$pc = $this->getProcessor();
 
-		$select1 = ['name' => TRUE, 'domain' => FALSE, 'item.subitem' => TRUE];
+		$select1 = ['name' => TRUE, 'domain' => FALSE, '!item.subitem' => TRUE];
 
 		Assert::same($select1, $pc->processSelect($select1));
 
-		$select2 = ['name', '!domain', 'item.subitem'];
+		$select2 = ['name', '!domain', '!!item.subitem'];
 
 		Assert::same($select1, $pc->processSelect($select2));
 	}
@@ -33,7 +33,7 @@ class MongoProcessor_ConditionsTest extends TestCase
 	function testProcesData()
 	{
 		$pc = $this->getProcessor();
-		
+
 		$actual = $pc->processData([
 			'type%s' => 'vehicle',
 			'width%i' => '27',
@@ -57,9 +57,9 @@ class MongoProcessor_ConditionsTest extends TestCase
 		];
 
 		Assert::same($expected, $actual);
-		
+
 		$expdate = $pc->processData(['date' => new \DateTime('2000-01-01 01:02:03')]);
-		
+
 		Assert::true($expdate['date'] instanceof \MongoDate);
 		Assert::same($expdate['date']->sec, 946684923);
 	}

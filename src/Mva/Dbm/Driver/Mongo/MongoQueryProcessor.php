@@ -45,14 +45,16 @@ class MongoQueryProcessor extends Nette\Object
 
 	public function processSelect(array $items)
 	{
-		if (array_key_exists(0, $items) === FALSE) {
+		if (!array_key_exists(0, $items)) {
 			return $items;
 		}
 
 		$select = [];
 
 		foreach ($items as $item) {
-			if (substr($item, 0, 1) === '!') {
+			list($modified, $item) = $this->doubledModifier($item, '!');
+
+			if ($modified && substr($item, 0, 1) === '!') {
 				$select[substr($item, 1)] = FALSE;
 			} else {
 				$select[$item] = TRUE;
@@ -218,15 +220,15 @@ class MongoQueryProcessor extends Nette\Object
 		$return = [];
 
 		foreach ($data as $key => $item) {
-			if (($count = substr_count($key, '%')) > 0) {
-				$key = $count > 1 ? str_replace('%%', '%', $key) : $key;
-				if (($count % 2) > 0 && preg_match('#^(.*)%(\w+(?:\[\])?)$#', $key, $parts)) {
-					$key = $parts[1];
-					$item = $this->processModifier($parts[2], $item);
-				}
+			list($modified, $key) = $this->doubledModifier($key, '%');
+
+			if ($modified && preg_match('#^(.*)%(\w+(?:\[\])?)$#', $key, $parts)) {
+				$key = $parts[1];
+				$item = $this->processModifier($parts[2], $item);
 			} elseif ($item instanceof \DateTime || $item instanceof \DateTimeImmutable) {
 				$item = $this->processModifier('dt', $item);
 			}
+
 			$return[$key] = $item;
 		}
 
@@ -323,11 +325,25 @@ class MongoQueryProcessor extends Nette\Object
 		}
 	}
 
+	############### internal ##############
+
 	protected function processArray($type, array &$values)
 	{
 		foreach ($values as &$item) {
 			$item = $this->processModifier($type, $item);
 		}
+	}
+
+	private function doubledModifier($value, $key)
+	{
+		if (($count = substr_count($value, $key)) > 0) {
+			$value = $count > 1 ? str_replace($key . $key, $key, $value) : $value;
+			if (($count % 2) > 0) {
+				return [TRUE, $value];
+			}
+		}
+
+		return [FALSE, $value];
 	}
 
 }
