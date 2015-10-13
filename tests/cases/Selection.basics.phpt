@@ -107,7 +107,7 @@ class CollectionBaseTest extends TestCase
 		foreach ($collection->fetchPairs('domain') as $index => $value) {
 			Assert::same($expected1[$index], $value->toArray());
 		}
-		
+
 		foreach ($collection->fetchPairs(NULL, 'domain') as $index => $value) {
 			Assert::same($expected2[$index], $value);
 		}
@@ -146,25 +146,52 @@ class CollectionBaseTest extends TestCase
 		$ret = $collection->insert($insert);
 
 		Assert::true($ret instanceof Mva\Dbm\Document);
-
 		Assert::true(isset($ret->_id));
+		Assert::true(isset($collection[$ret->_id]));
 
 		$data = $collection->wherePrimary($ret->_id)->fetch()->toArray();
 
-		$ret = $ret->toArray();
+		$retarr = $ret->toArray();
 
-		Assert::same(ksort($ret, SORT_STRING), ksort($data, SORT_STRING));
+		Assert::same(ksort($retarr, SORT_STRING), ksort($data, SORT_STRING));
 	}
 
 	function testUpdate()
 	{
 		$collection = $this->getCollection();
 
-		$collection->where('name', 'Test 6')->update(['domain' => 'alpha']);
+		$ret = $collection->where('name', 'Test 6')->update(['domain' => 'alpha']);
 
 		$data = $collection->fetch();
 
+		Assert::same($ret, 1);
 		Assert::same('alpha', $data->domain);
+	}
+
+	function testUpsert()
+	{
+		$collection = $this->getCollection();
+
+		$upsert = [
+			'pr_id' => 3,
+			'name' => 'Test 7',
+			'domain' => 'theta',
+			'size' => 101,
+			'points' => [18, 31, 64],
+			'type' => 10
+		];
+
+		$ret = $collection->where('domain', 'theta')->update($upsert, TRUE);
+
+		Assert::true($ret instanceof Mva\Dbm\Document);
+		Assert::true(isset($ret->_id));
+		Assert::true(isset($collection[$ret->_id]));
+
+		$data = $collection->wherePrimary($ret->_id)->fetch()->toArray();
+
+		$retarr = $ret->toArray();
+
+		Assert::same(ksort($retarr, SORT_STRING), ksort($data, SORT_STRING));
 	}
 
 	function testUpdateManipulation()

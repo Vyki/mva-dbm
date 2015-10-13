@@ -18,6 +18,9 @@ class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Counta
 	/** @var string */
 	protected $primary = '_id';
 
+	/** @var string */
+	protected $primaryModifier = '%oid';
+
 	/** @var MongoCursor|NULL|array */
 	protected $result;
 
@@ -64,9 +67,24 @@ class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Counta
 
 	public function update($data, $upsert = FALSE, $multi = TRUE)
 	{
-		return $this->connection->query->update($this->queryBuilder->from, $data, $this->queryBuilder->where, [
-					'multiple' => (bool) $multi, 'upsert' => (bool) $upsert
+		$data = (array) $data;
+
+		$updated = $this->connection->query->update($this->queryBuilder->from, $data, $this->queryBuilder->where, [
+			'multiple' => (bool) $multi, 'upsert' => (bool) $upsert
 		]);
+
+		if (isset($updated[$this->primary])) {
+			$doc = $this->createDocument($updated);
+
+			if ($this->docs !== NULL) {
+				$this->docs[$updated[$this->primary]] = $doc;
+				$this->data[$updated[$this->primary]] = $doc;
+			}
+
+			return $doc;
+		}
+
+		return $updated;
 	}
 
 	/** @return Document|bool */
@@ -74,14 +92,14 @@ class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Counta
 	{
 		$data = (array) $data;
 
-		$ret = $this->connection->query->insert($this->queryBuilder->from, $data);
+		$inserted = $this->connection->query->insert($this->queryBuilder->from, $data);
 
-		if ($ret && isset($data[$this->primary])) {
-			$doc = $this->createDocument($data);
+		if (isset($inserted[$this->primary])) {
+			$doc = $this->createDocument($inserted);
 
 			if ($this->docs !== NULL) {
-				$this->docs[$data[$this->primary]] = $doc;
-				$this->data[$data[$this->primary]] = $doc;
+				$this->docs[$inserted[$this->primary]] = $doc;
+				$this->data[$inserted[$this->primary]] = $doc;
 			}
 
 			return $doc;
@@ -110,7 +128,7 @@ class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Counta
 
 	public function wherePrimary($key)
 	{
-		$this->where($this->getPrimary(), $key);
+		$this->where($this->primary . ' = ' . $this->primaryModifier, $key);
 		return $this;
 	}
 
