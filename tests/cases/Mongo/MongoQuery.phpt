@@ -67,24 +67,24 @@ class MongoQueryTest extends TestCase
 		$query = $this->getQuery();
 
 		$builder = new MongoQueryBuilder();
-		$builder->addSelect('SUM(size) AS size_total');
-		$builder->setGroup('domain');
-		$builder->addWhere('size > %i', 10);
+		$builder->select('SUM(size) AS size_total');
+		$builder->group('domain');
+		$builder->where('size > %i', 10);
 
 		$result1 = $query->select('test_query', $builder->buildAggreregateQuery());
 
 		Assert::same([
 			['size_total' => 199, 'domain' => 'beta'],
 			['size_total' => 82, 'domain' => 'alpha'],
-				], $result1->fetchAll());
+		], $result1->fetchAll());
 
-		$builder->addHaving('size_total > %i', 82);
+		$builder->having('size_total > %i', 82);
 
 		$result2 = $query->select('test_query', $builder->buildAggreregateQuery());
 
 		Assert::same([
 			['size_total' => 199, 'domain' => 'beta'],
-				], $result2->fetchAll());
+		], $result2->fetchAll());
 	}
 
 	function testAggregationCount()

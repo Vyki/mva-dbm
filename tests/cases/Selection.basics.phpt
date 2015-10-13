@@ -47,18 +47,9 @@ class CollectionBaseTest extends TestCase
 	{
 		$collection = $this->getCollection();
 
-		$collection->select('domain', 'type');
+		$collection->select('domain', '!type');
 
-		Assert::same(['domain' => TRUE, 'type' => TRUE], $collection->queryBuilder->select);
-	}
-
-	function testUnselect()
-	{
-		$collection = $this->getCollection();
-
-		$collection->select('domain', 'type')->unselect('_id');
-
-		Assert::same(['domain' => TRUE, 'type' => TRUE, '_id' => FALSE], $collection->queryBuilder->select);
+		Assert::same(['domain', '!type'], $collection->queryBuilder->select);
 	}
 
 	function testFetch()
@@ -99,7 +90,7 @@ class CollectionBaseTest extends TestCase
 	{
 		$collection = $this->getCollection();
 
-		$collection->select('domain', 'pr_id')->unselect('_id')->where('pr_id', 1);
+		$collection->select('domain', 'pr_id', '!_id')->where('pr_id', 1);
 
 		$expected1 = ['alpha' => ['pr_id' => 1, 'domain' => 'alpha'], 'beta' => ['pr_id' => 1, 'domain' => 'beta']];
 		$expected2 = array_keys($expected1);

@@ -47,7 +47,7 @@ class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Counta
 	{
 		$this->connection = $connection;
 		$this->queryBuilder = $connection->getQueryBuilder();
-		$this->queryBuilder->setFrom($name);
+		$this->queryBuilder->from($name);
 	}
 
 	public function __clone()
@@ -150,19 +150,6 @@ class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Counta
 	}
 
 	/**
-	 * Remove select item.
-	 * @param string|array
-	 * @return self
-	 */
-	public function unselect($items)
-	{
-		$this->emptyResultSet();
-
-		$this->queryBuilder->addUnselect(func_get_args());
-		return $this;
-	}
-
-	/**
 	 * Adds order clause, more calls appends to the end.
 	 * @param strings for example 'item1 ASC', 'item2 DESC'
 	 * @return self
@@ -185,8 +172,8 @@ class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Counta
 	{
 		$this->emptyResultSet();
 
-		$this->queryBuilder->setLimit($limit);
-		($offset !== NULL) && $this->queryBuilder->setOffset($offset);
+		$this->queryBuilder->limit($limit);
+		($offset !== NULL) && $this->queryBuilder->offset($offset);
 		return $this;
 	}
 
@@ -214,7 +201,7 @@ class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Counta
 	public function group($items)
 	{
 		$this->emptyResultSet();
-		$this->queryBuilder->setGroup(func_get_args());
+		$this->queryBuilder->group(func_get_args());
 		return $this;
 	}
 

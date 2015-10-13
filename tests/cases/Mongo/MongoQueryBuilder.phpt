@@ -3,107 +3,200 @@
 namespace Dbm\Tests\Mongo;
 
 use Tester\Assert,
-	Mva\Dbm\Driver;
+	Mva\Dbm\Driver,
+	Tester\TestCase;
 
 $database = require __DIR__ . "/../../bootstrap.php";
 
-$test = ['bus', 2, 'branch'];
+class MongoQueryBuilderTest extends TestCase
+{
 
-$test2 = array_combine($test, $test);
+	private function getBuilder()
+	{
+		return new Driver\Mongo\MongoQueryBuilder('grid');
+	}
 
-$a = new Driver\Mongo\MongoQueryBuilder('grid');
+	public function testFrom()
+	{
+		$builder = $this->getBuilder();
+		Assert::same('grid', $builder->from);
 
-//from test
-Assert::same('grid', $a->from);
+		$builder->from('grid_test');
+		Assert::same('grid_test', $builder->from);
+	}
 
-$a->setFrom('grid_test');
-Assert::same('grid_test', $a->from);
+	public function testWhere()
+	{
+		$builder = $this->getBuilder();
 
-//where test
-$a->addWhere('domain', 'branch');
-Assert::same(['domain' => 'branch'], $a->where[0]);
+		$builder->addWhere('domain', 'branch');
+		Assert::same(['domain' => 'branch'], $builder->where[0]);
 
-$a->addWhere(['domain = %s' => 'branch', 'domain != bus']);
-Assert::same(['domain = %s' => 'branch'], $a->where[1]);
-Assert::same([0 => 'domain != bus'], $a->where[2]);
+		$builder->addWhere(['domain = %s' => 'branch', 'domain != bus']);
+		Assert::same(['domain = %s' => 'branch'], $builder->where[1]);
+		Assert::same([0 => 'domain != bus'], $builder->where[2]);
 
+		$builder->where(NULL);
+		Assert::same([], $builder->where);
+	}
 
-//having test - same as where
-$a->addHaving('domain <> %s', 'branch');
-Assert::same(['domain <> %s' => 'branch'], $a->having[0]);
+	public function testHaving()
+	{
+		$builder = $this->getBuilder();
 
-$a->addHaving('domain IN', $test);
-Assert::same(['domain IN' => $test], $a->having[1]);
+		$builder->addHaving('domain', 'branch');
+		Assert::same(['domain' => 'branch'], $builder->having[0]);
 
+		$builder->addHaving(['domain = %s' => 'branch', 'domain != bus']);
+		Assert::same(['domain = %s' => 'branch'], $builder->having[1]);
+		Assert::same([0 => 'domain != bus'], $builder->having[2]);
 
-//select test
-$a->addSelect('domain');
-Assert::same(['domain' => TRUE], $a->select);
+		$builder->having(NULL);
+		Assert::same([], $builder->having);
+	}
 
-$a->addSelect('index');
-Assert::same(['domain' => TRUE, 'index' => TRUE], $a->select);
+	public function testSelect()
+	{
+		$builder = $this->getBuilder();
 
-$a->addSelect(['domain', 'coord']);
-Assert::same(['domain' => TRUE, 'index' => TRUE, 'coord' => TRUE], $a->select);
+		$builder->addSelect('domain');
+		Assert::same(['domain'], $builder->select);
 
-//unselect test
-$a->addUnselect('_id');
-Assert::same(['domain' => TRUE, 'index' => TRUE, 'coord' => TRUE, '_id' => FALSE], $a->select);
+		$builder->addSelect('!index');
+		Assert::same(['domain', '!index'], $builder->select);
 
-$a->addUnselect(['index', 'pr_id']);
-Assert::same(['domain' => TRUE, 'index' => FALSE, 'coord' => TRUE, '_id' => FALSE, 'pr_id' => FALSE], $a->select);
+		$builder->select('coord');
+		Assert::same(['coord'], $builder->select);
 
-//order test
-$a->addOrder('domain ASC');
-Assert::same(['domain' => 1], $a->order);
+		$builder->select(['id', 'pid']);
+		Assert::same(['id', 'pid'], $builder->select);
 
-$a->addOrder(['index DESC', 'coord ASC']);
-Assert::same(['domain' => 1, 'index' => -1, 'coord' => 1], $a->order);
+		$builder->select(NULL);
+		Assert::same([], $builder->select);
+	}
 
-//set group test
-$a->setGroup(['coord', 'domain']);
-Assert::same(['coord' => '$coord', 'domain' => '$domain'], $a->group);
+	public function testOrder()
+	{
+		$builder = $this->getBuilder();
 
-$a->setGroup('domain');
-Assert::same(['domain' => '$domain'], $a->group);
+		$builder->addOrder('domain ASC');
+		Assert::same(['domain' => 1], $builder->order);
 
-//aggregate
-$a->addSelect('MAX(domain) AS domain_max');
-Assert::same(['$max' => '$domain'], $a->aggregate['domain_max']);
+		$builder->addOrder(['index' => -1, 'coord' => 1]);
+		Assert::same(['domain' => 1, 'index' => -1, 'coord' => 1], $builder->order);
 
-$a->addSelect('MIN(delta)');
-Assert::same(['$min' => '$delta'], $a->aggregate['_delta_min']);
+		$builder->order('domain DESC');
+		Assert::same(['domain' => -1], $builder->order);
 
-$a->addAggregate('sum', 'domain', 'dom_sum');
-Assert::same(['$sum' => '$domain'], $a->aggregate['dom_sum']);
+		$builder->order(['coord' => 1]);
+		Assert::same(['coord' => 1], $builder->order);
 
-$a->addAggregate('sum', '*', 'count');
-Assert::same(['$sum' => 1], $a->aggregate['count']);
+		$builder->order(NULL);
+		Assert::same([], $builder->order);
+	}
 
-Assert::same(['_id', 'domain_max', '_delta_min', 'dom_sum', 'count'], array_keys($a->aggregate));
+	public function testGroup()
+	{
+		$builder = $this->getBuilder();
 
+		$builder->group(['coord', 'domain']);
+		Assert::same(['coord' => '$coord', 'domain' => '$domain'], $builder->group);
 
-$b = new Driver\Mongo\MongoQueryBuilder();
+		$builder->group('domain');
+		Assert::same(['domain' => '$domain'], $builder->group);
 
-//select distinct
-$b->addSelect('DISTINCT domain');
-Assert::same(['distinct' => 'domain'], $b->getSelect());
+		$builder->group(NULL);
+		Assert::same([], $builder->group);
+	}
 
-$b->addSelect('coord');
-Assert::same(['coord' => TRUE], $b->getSelect());
-Assert::same([['coord' => TRUE], [], []], $b->buildSelectQuery());
+	public function testAggregate()
+	{
+		$builder = $this->getBuilder();
 
-$b->addOrder('name ASC');
+		$builder->addSelect('MAX(domain) AS domain_max');
+		Assert::same(['$max' => '$domain'], $builder->aggregate['domain_max']);
 
-//limit and offset
-$b->setLimit(2);
-$b->setOffset(5);
-Assert::same(2, $b->getLimit());
-Assert::same(5, $b->getOffset());
+		$builder->addSelect('MIN(delta)');
+		Assert::same(['$min' => '$delta'], $builder->aggregate['_delta_min']);
 
-Assert::same([['coord' => TRUE], [], ['limit' => 2, 'skip' => 5, 'sort' => ['name' => 1]]], $b->buildSelectQuery());
+		$builder->addAggregate('sum', 'domain', 'dom_sum');
+		Assert::same(['$sum' => '$domain'], $builder->aggregate['dom_sum']);
 
-$b->setLimit(NULL);
-$b->setOffset(NULL);
+		$builder->addAggregate('sum', '*', 'count');
+		Assert::same(['$sum' => 1], $builder->aggregate['count']);
 
-Assert::same([['coord' => TRUE], [], ['sort' => ['name' => 1]]], $b->buildSelectQuery());
+		Assert::same(['_id', 'domain_max', '_delta_min', 'dom_sum', 'count'], array_keys($builder->aggregate));
+
+		$builder->aggregate(NULL);
+		Assert::same(FALSE, $builder->aggregate);
+
+		$builder->aggregate('sum', '*', 'count');
+		Assert::same(['$sum' => 1], $builder->aggregate['count']);
+	}
+
+	public function testLimitOffset()
+	{
+		$builder = $this->getBuilder();
+		$builder->limit(5, 3);
+
+		Assert::same(5, $builder->limit);
+		Assert::same(3, $builder->offset);
+
+		$builder->limit(10);
+		$builder->offset(6);
+
+		Assert::same(10, $builder->limit);
+		Assert::same(6, $builder->offset);
+	}
+
+	public function testBuildSelectQuery()
+	{
+		$builder = $this->getBuilder();
+
+		$builder->select(['_id', 'domain']);
+		$builder->where('type = %id', 2);
+		$builder->order(['oid ASC', 'domain DESC']);
+		$builder->limit(2, 1);
+
+		Assert::same([
+			['_id', 'domain'],
+			[['type = %id' => 2]],
+			[
+				'limit' => 2,
+				'skip' => 1,
+				'sort' => array('oid' => 1, 'domain' => -1),
+			],
+		], $builder->buildSelectQuery());
+	}
+
+	public function testBuildAggregateQuery()
+	{
+		$builder = $this->getBuilder();
+		$builder->select('SUM(size) AS size_total');
+		$builder->group('domain');
+		$builder->where('size > %i', 10);
+		$builder->addSelect('name');
+		$builder->having('size_total > %i', 82);
+		$builder->order(['oid ASC', 'domain DESC']);
+		$builder->limit(2, 1);
+
+		Assert::same([
+			['$project' => ['name']],
+			['$match' => [['size > %i' => 10]]],
+			[
+				'$group' => [
+					'_id' => ['domain' => '$domain'],
+					'size_total' => ['$sum' => '$size'],
+				],
+			],
+			['$sort' => ['oid' => 1, 'domain' => -1]],
+			['$match' => [['size_total > %i' => 82]]],
+			['$skip' => 1],
+			['$limit' => 2]
+		], $builder->buildAggreregateQuery());
+	}
+
+}
+
+$test = new MongoQueryBuilderTest();
+$test->run();

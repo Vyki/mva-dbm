@@ -15,16 +15,14 @@ use Nette,
 /**
  * MongoQueryBuilder is inspired by Nette\Database https://github.com/nette/database by Jakub Vrana, Jan Skrasek, David Grudl
  *
- * @property array $group
- * @property int $limit
- * @property int $offset
- * @property string $from
- * @property-read string $cmd
+ * @property-read int $limit
+ * @property-read int $offset
+ * @property-read array $group
+ * @property-read string $from
  * @property-read array $order
- * @property-read array $select
  * @property-read array $where
+ * @property-read array $select
  * @property-read array $having
- * 
  */
 class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 {
@@ -62,7 +60,12 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 	public function __construct($name = '')
 	{
 		$this->cmd = ini_get('mongo.cmd') ? : '$';
-		$this->setFrom($name);
+		$this->from($name);
+	}
+
+	public function from($name)
+	{
+		$this->from = (string) $name;
 	}
 
 	public function getFrom()
@@ -70,17 +73,9 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 		return $this->from;
 	}
 
-	public function setFrom($name)
-	{
-		$this->from = (string) $name;
-	}
+	######################### aggregation ##############################
 
-	public function getGroup()
-	{
-		return $this->group;
-	}
-
-	public function setGroup($items)
+	public function group($items)
 	{
 		$group = [];
 
@@ -89,12 +84,32 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 		}
 
 		$this->group = $group;
+
+		return $this;
+	}
+
+	public function getGroup()
+	{
+		return $this->group;
+	}
+
+	public function aggregate($type, $item = NULL, $name = NULL)
+	{
+		$this->aggregate = [];
+
+		if (!empty($type) && !empty($item)) {
+			$this->addAggregate($type, $item, $name);
+		}
+
+		return $this;
 	}
 
 	public function addAggregate($type, $item, $name = NULL)
 	{
 		$ltype = strtolower($type);
 		$this->aggregate[$name ? : '_' . $item . '_' . $ltype] = [$this->formatCmd($ltype) => ($item == '*') ? 1 : $this->formatCmd($item)];
+
+		return $this;
 	}
 
 	public function getAggregate()
@@ -106,13 +121,33 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 		return ['_id' => empty($this->group) ? NULL : $this->group] + (array) $this->aggregate;
 	}
 
+	######################### ordering ##############################
+
+	public function order($items)
+	{
+		$this->order = [];
+
+		if (!empty($items)) {
+			$this->addOrder($items);
+		}
+
+		return $this;
+	}
+
 	public function addOrder($items)
 	{
-		foreach ((array) $items as $item) {
+		foreach ((array) $items as $key => $item) {
+			if (is_string($key)) {
+				$this->order[$key] = empty($item) || $item < 0 ? -1 : 1;
+				continue;
+			}
+
 			if (preg_match('#^(\w+(?:\.\w+)*)\s+(ASC|DESC)$#i', $item, $part)) {
 				$this->order[$part[1]] = $part[2] === 'ASC' ? 1 : -1;
 			}
 		}
+
+		return $this;
 	}
 
 	public function getOrder()
@@ -120,42 +155,49 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 		return $this->order;
 	}
 
-	public function addUnselect($items)
+	######################### projection ##############################
+
+	public function select($items)
 	{
-		foreach ((array) $items as $item) {
-			$this->select[$item] = FALSE;
+		$this->select = [];
+
+		if (!empty($items)) {
+			$this->addSelect($items);
 		}
+
+		return $this;
 	}
 
 	public function addSelect($items)
 	{
-		foreach ((array) $items as $item) {
-			if (preg_match('#^(\w+)\(([\w_]+|\*)\)(?:\s+AS\s+([\w_]+))?$#i', $item, $part)) {
+		foreach ((array) $items as $key => $item) {
+			if (is_string($key)) {
+				$this->select[$key] = $item;
+				continue;
+			}
+
+			if (is_string($item) && preg_match('#^(\w+)\(([\w_]+|\*)\)(?:\s+AS\s+([\w_]+))?$#i', $item, $part)) {
 				$this->addAggregate($part[1], $part[2], isset($part[3]) ? $part[3] : NULL);
 				continue;
 			}
 
-			if (substr_compare($item, 'distinct ', 0, 10, true) === 1) {
-				$this->select['distinct'] = substr($item, 9);
-				continue;
-			}
-
-			$this->select[$item] = TRUE;
+			$this->select[] = $item;
 		}
+
+		return $this;
 	}
 
 	public function getSelect()
 	{
-		if (count($this->select) > 1 && isset($this->select['distinct']) && is_string($this->select['distinct'])) {
-			unset($this->select['distinct']);
-		}
-
 		return $this->select;
 	}
 
-	public function setLimit($limit)
+	######################### limit and offset ##############################
+
+	public function limit($limit, $offset = NULL)
 	{
 		$this->limit = (int) $limit;
+		$offset && $this->offset($offset);
 	}
 
 	public function getLimit()
@@ -163,7 +205,7 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 		return $this->limit;
 	}
 
-	public function setOffset($offset)
+	public function offset($offset)
 	{
 		$this->offset = (int) $offset;
 	}
@@ -171,6 +213,19 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 	public function getOffset()
 	{
 		return $this->offset;
+	}
+
+	######################### where condition ##############################
+
+	public function where($conditions, $parameters = [])
+	{
+		$this->where = [];
+
+		if (!empty($conditions)) {
+			$this->addWhere($conditions, $parameters);
+		}
+
+		return $this;
 	}
 
 	public function addWhere($condition, $parameters = [])
@@ -196,9 +251,35 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 		return $this->where;
 	}
 
+	######################### having condition ##############################
+
+	public function having($conditions, $parameters = [])
+	{
+		$this->having = [];
+
+		if (!empty($conditions)) {
+			$this->addHaving($conditions, $parameters);
+		}
+
+		return $this;
+	}
+
 	public function addHaving($condition, $parameters = [])
 	{
+		if (is_array($condition) && $parameters === []) {
+			foreach ($condition as $key => $val) {
+				if (is_int($key)) {
+					$this->addHaving($val);
+				} else {
+					$this->addHaving($key, $val);
+				}
+			}
+			return $this;
+		}
+
 		$this->having[] = empty($parameters) ? [$condition] : [$condition => $parameters];
+
+		return $this;
 	}
 
 	public function getHaving()
@@ -206,7 +287,7 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 		return $this->having;
 	}
 
-	################## Builders ##################
+	################## builders ##################
 
 	public function buildSelectQuery()
 	{
@@ -271,7 +352,7 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 		$this->where = $builder->where;
 	}
 
-	################## Internals ##################
+	################## Internal ##################
 
 	private function formatCmd($cmd)
 	{

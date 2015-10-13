@@ -11,45 +11,37 @@ namespace Mva\Dbm\Driver;
 interface IQueryBuilder
 {
 
+	function from($name);
+
 	function getFrom();
 
-	function setFrom($name);
+	function group($items);
 
-	function getGroup();
-
-	function setGroup($items);
-
-	function getAggregate();
+	function aggregate($type, $item = NULL, $name = NULL);
 
 	function addAggregate($type, $item, $name = NULL);
 
-	function getOrder();
+	function order($items);
 
 	function addOrder($items);
 
+	function select($items);
+
 	function addSelect($items);
 
-	function addUnselect($items);
+	function limit($limit, $offset = NULL);
 
-	function getSelect();
+	function offset($offset);
 
-	function setLimit($limit);
-
-	function getLimit();
-
-	function getOffset();
-
-	function setOffset($offset);
-
-	function getWhere();
+	function where($condition, $parameters = []);
 
 	function addWhere($condition, $parameters = []);
 
-	function getHaving();
+	function getWhere();
+
+	function having($condition, $parameters = []);
 
 	function addHaving($condition, $parameters = []);
-
-	################## Builders ##################
 
 	function buildSelectQuery();
 
