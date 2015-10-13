@@ -52,7 +52,7 @@ class MongoQueryTest extends TestCase
 
 		Assert::same([['domain' => 'alpha'], ['domain' => 'beta']], $data);
 	}
-	
+
 	function testCount()
 	{
 		$query = $this->getQuery();
@@ -61,7 +61,7 @@ class MongoQueryTest extends TestCase
 
 		Assert::same($result, 4);
 	}
-	
+
 	function testAggregation()
 	{
 		$query = $this->getQuery();
@@ -76,52 +76,52 @@ class MongoQueryTest extends TestCase
 		Assert::same([
 			['size_total' => 199, 'domain' => 'beta'],
 			['size_total' => 82, 'domain' => 'alpha'],
-		], $result1->fetchAll());
-		
+				], $result1->fetchAll());
+
 		$builder->addHaving('size_total > %i', 82);
-		
+
 		$result2 = $query->select('test_query', $builder->buildAggreregateQuery());
-		
+
 		Assert::same([
 			['size_total' => 199, 'domain' => 'beta'],
-		], $result2->fetchAll());
+				], $result2->fetchAll());
 	}
-	
+
 	function testAggregationCount()
 	{
 		$query = $this->getQuery();
 
 		$builder = new MongoQueryBuilder();
-		
+
 		$builder->addSelect('SUM(*) AS count');
-		
+
 		$result1 = $query->select('test_query', $builder->buildAggreregateQuery())->fetch();
-				
+
 		Assert::same(6, $result1['count']);
 	}
-	
+
 	function testInsert()
 	{
 		$query = $this->getQuery();
 
 		$insert = [
-			'pr_id' => 2,
+			'pr_id%i' => '2',
 			'name' => 'Test 7',
 			'domain' => 'beta',
 			'size' => 101,
-			'points' => [18, 31, 64],
+			'points%f[]' => ['18.0', 31.32, 64],
 			'type' => 10
 		];
 
-		$ret = $query->insert('test_query', $insert);
+		$data = $query->insert('test_query', $insert);
 
-		Assert::truthy($ret);
+		Assert::type('array', $data);
+		Assert::same(['pr_id', 'name', 'domain', 'size', 'points', 'type', '_id'], array_keys($data));
+		Assert::type('string', $data['_id']);
 
-		$result = $query->select('test_query', ['!_id'], ['_id = %oid' => $insert['_id']])->fetch();
-
-		unset($insert['_id']);
-
-		Assert::same($insert, $result);
+		$result = $query->select('test_query', ['!_id'], ['_id = %oid' => $data['_id']])->fetch();
+		unset($data['_id']);
+		Assert::same($data, $result);
 	}
 
 	function testUpdate()
@@ -131,12 +131,51 @@ class MongoQueryTest extends TestCase
 		$condition = ['_id = %oid' => '54ccf5639ab253f598d6b4a5'];
 
 		$ret = $query->update('test_query', ['domain' => 'theta'], $condition);
-
 		Assert::truthy($ret);
 
 		$result = $query->select('test_query', ['domain'], $condition)->fetch();
-
 		Assert::same('theta', $result['domain']);
+	}
+
+	function testUpdateUpsert()
+	{
+		$query = $this->getQuery();
+
+		$insert = [
+			'pr_id%i' => '2',
+			'name' => 'Test 7',
+			'domain' => 'gama',
+			'size' => 101,
+			'points%f[]' => ['18.0', 31.32, 64],
+			'type' => 10
+		];
+
+		$condition = ['domain' => 'gama'];
+
+		$data = $query->update('test_query', $insert, $condition, ['upsert' => TRUE]);
+
+		Assert::same(['_id', 'pr_id', 'name', 'domain', 'size', 'points', 'type'], array_keys($data));
+		Assert::type('string', $data['_id']);
+
+		$rows = $query->update('test_query', $insert, $condition, ['upsert' => TRUE]);
+		Assert::same(1, $rows);
+	}
+
+	function testUpdateMultiple()
+	{
+		$query = $this->getQuery();
+
+		$conditionBeta = ['domain' => 'beta'];
+		$conditionTheta = ['domain' => 'theta'];
+
+		$rows = $query->update('test_query', ['domain' => 'theta'], $conditionBeta, ['multiple' => TRUE]);
+		Assert::same(2, $rows);
+
+		$countBeta = $query->select('test_query', IQuery::SELECT_COUNT, $conditionBeta);
+		Assert::same(0, $countBeta);
+
+		$countTheta = $query->select('test_query', IQuery::SELECT_COUNT, $conditionTheta);
+		Assert::same(2, $countTheta);
 	}
 
 	function testUpdateManipulation()
@@ -152,9 +191,9 @@ class MongoQueryTest extends TestCase
 			'$rename' => ['type' => 'category']
 		];
 
-		$ret = $query->update('test_query', $data, $condition);
+		$rows = $query->update('test_query', $data, $condition);
 
-		Assert::truthy($ret);
+		Assert::same(1, $rows);
 
 		$result = $query->select('test_query', ['!_id'], $condition)->fetch();
 
@@ -162,6 +201,13 @@ class MongoQueryTest extends TestCase
 		Assert::false(array_key_exists('domain', $result));
 		Assert::false(array_key_exists('type', $result));
 		Assert::true(array_key_exists('category', $result));
+	}
+
+	function testDelete()
+	{
+		$query = $this->getQuery();
+		$return = $query->delete('test_query', ['pr_id = %i' => 2]);
+		Assert::same(3, $return);
 	}
 
 }

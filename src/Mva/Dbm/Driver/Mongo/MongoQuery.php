@@ -41,11 +41,11 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 		if (isset($fields[self::SELECT_DISTINCT]) && is_string($fields[self::SELECT_DISTINCT])) {
 			return $this->selectDistinct($collection, (string) $fields[self::SELECT_DISTINCT], $criteria);
 		}
-		
+
 		if ($fields === self::SELECT_COUNT) {
 			return $this->driver->getCollection($collection)->count($criteria, $options);
 		}
-		
+
 		$select = $this->preprocessor->processSelect((array) $fields);
 
 		$result = $this->driver->getCollection($collection)->find($criteria, $select);
@@ -93,20 +93,31 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 
 	public function delete($collection, array $criteria, array $options = [])
 	{
-		return $this->driver->getCollection($collection)->remove($criteria, $options);
+		$criteria = $criteria = $this->preprocessor->processCondition($criteria);
+		$return = $this->driver->getCollection($collection)->remove($criteria, $options);
+		return $return['n'];
 	}
 
 	public function insert($collection, array $data, array $options = [])
 	{
-		return $this->driver->getCollection($collection)->insert($data, $options);
+		$data = $this->preprocessor->processData($data);
+		$return = $this->driver->getCollection($collection)->insert($data, $options);
+		$result = new MongoResult([$data]);
+		return $result->fetch();
 	}
 
 	public function update($collection, array $data, array $criteria, array $options = [])
 	{
-		$parsedData = $this->preprocessor->processUpdate($data);
-		$parsedCriteria = $this->preprocessor->processCondition($criteria);
+		$data = $this->preprocessor->processUpdate($data);
+		$criteria = $this->preprocessor->processCondition($criteria);
+		$return = $this->driver->getCollection($collection)->update($criteria, $data, $options);
 
-		return $this->driver->getCollection($collection)->update($parsedCriteria, $parsedData, $options);
+		if (isset($return['upserted'])) {
+			$result = new MongoResult([array_merge(['_id' => $return['upserted']], $data[$this->preprocessor->formatCmd('set')])]);
+			return $result->fetch();
+		}
+		
+		return $return['n'];
 	}
 
 	public function insertBatch($collection)
