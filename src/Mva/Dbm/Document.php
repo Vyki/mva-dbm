@@ -1,11 +1,13 @@
 <?php
-namespace Mva\Dbm;
 
 /**
- * Single document representation.
- * @author Roman Vykuka
- * 
+ * This file is part of the Mva\Dbm library.
+ * @license    MIT
+ * @link       https://github.com/Vyki/mva-dbm
  */
+
+namespace Mva\Dbm;
+
 class Document
 {
 
@@ -33,6 +35,7 @@ class Document
 	 */
 	public function __get($name)
 	{
-		throw new MemberAccessException("Column '$name' does not exist");
+		throw new MemberAccessException("Item '$name' does not exist");
 	}
+
 }

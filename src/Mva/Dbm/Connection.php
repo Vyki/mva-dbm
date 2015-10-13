@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * This file is part of the Mva\Dbm library.
+ * @license    MIT
+ * @link       https://github.com/Vyki/mva-dbm
+ */
+
 namespace Mva\Dbm;
 
 use Mva,
@@ -9,17 +15,16 @@ use Mva,
 	Mva\Dbm\Driver\IDriver;
 
 /**
- * MongoDB context.
- *
- * @author Roman Vykuka
+ * Connection is inspired by https://github.com/nextras/dbal by Jan Skrasek
  * @property-read Driver\IQuery $query
  * @property-read Driver\IDriver $driver
  */
 class Connection extends Nette\Object
-{	
+{
+
 	/** @var array */
 	private $config;
-	
+
 	/** @var bool */
 	private $connected;
 
@@ -42,11 +47,11 @@ class Connection extends Nette\Object
 		if ($this->connected) {
 			return;
 		}
-		
+
 		$this->driver->connect($this->config);
 		$this->connected = TRUE;
 	}
-	
+
 	/**
 	 * Returns driver instance
 	 * @return Driver\IDriver	 
@@ -73,7 +78,7 @@ class Connection extends Nette\Object
 	{
 		return $this->driver->getCollection($name);
 	}
-	
+
 	/**
 	 * Returns parameter builder
 	 * @return Driver\IQuery
@@ -91,7 +96,6 @@ class Connection extends Nette\Object
 	{
 		return $this->driver->getQueryBuilder();
 	}
-	
 
 	/**
 	 * Returns collection

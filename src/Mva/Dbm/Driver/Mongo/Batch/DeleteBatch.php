@@ -1,17 +1,25 @@
 <?php
+
+/**
+ * This file is part of the Mva\Dbm library.
+ * @license    MIT
+ * @link       https://github.com/Vyki/mva-dbm
+ */
+
 namespace Mva\Dbm\Driver\Mongo\Batch;
 
 use MongoDeleteBatch;
 
 class DeleteBatch extends WriteBatch
 {
+
 	const LIMIT = 'limit';
-	
+
 	protected function createBatch($name)
 	{
 		return new MongoDeleteBatch($this->driver->getCollection($name));
 	}
-	
+
 	public function add($condition = NULL, $limit = 1)
 	{
 		$this->finishItem();
@@ -19,7 +27,7 @@ class DeleteBatch extends WriteBatch
 		$this->builder = $this->driver->getQueryBuilder();
 
 		$condition && $this->where($condition);
-		
+
 		$this->flag(self::LIMIT, $limit);
 
 		return $this;
@@ -35,4 +43,5 @@ class DeleteBatch extends WriteBatch
 		$this->queue[] = $this->query;
 		$this->nextQuery();
 	}
+
 }

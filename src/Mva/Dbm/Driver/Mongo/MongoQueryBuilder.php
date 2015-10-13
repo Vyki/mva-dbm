@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * This file is part of the Mva\Dbm library.
+ * @license    MIT
+ * @link       https://github.com/Vyki/mva-dbm
+ */
+
 namespace Mva\Dbm\Driver\Mongo;
 
 use Nette,
@@ -7,11 +13,8 @@ use Nette,
 	Mva\Dbm\Driver\IQueryBuilder;
 
 /**
- * Prepares query, projection and parameters.
- * ParamBuilder is inspired by Nette\Database http://doc.nette.org/en/2.3/database by Jakub Vrana, Jan Skrasek, David Grudl
+ * MongoQueryBuilder is inspired by Nette\Database https://github.com/nette/database by Jakub Vrana, Jan Skrasek, David Grudl
  *
- * @author Roman Vykuka
- * 
  * @property array $group
  * @property int $limit
  * @property int $offset

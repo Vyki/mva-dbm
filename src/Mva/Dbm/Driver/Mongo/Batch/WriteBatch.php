@@ -1,18 +1,19 @@
 <?php
 
+/**
+ * This file is part of the Mva\Dbm library.
+ * @license    MIT
+ * @link       https://github.com/Vyki/mva-dbm
+ */
+
 namespace Mva\Dbm\Driver\Mongo\Batch;
 
 use Nette,
-	MongoClient,
 	MongoWriteBatch,
-	Mva\Dbm\NotSupportedException,
 	Mva\Dbm\Driver\Mongo\MongoDriver,
 	Mva\Dbm\Driver\Mongo\MongoQueryBuilder,
 	Mva\Dbm\Driver\Mongo\MongoQueryProcessor;
 
-/**
- * @author Roman Vykuka
- */
 abstract class WriteBatch extends Nette\Object
 {
 

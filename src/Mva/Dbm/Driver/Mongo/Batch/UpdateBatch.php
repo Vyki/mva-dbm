@@ -1,12 +1,15 @@
 <?php
 
+/**
+ * This file is part of the Mva\Dbm library.
+ * @license    MIT
+ * @link       https://github.com/Vyki/mva-dbm
+ */
+
 namespace Mva\Dbm\Driver\Mongo\Batch;
 
 use MongoUpdateBatch;
 
-/**
- * @author Roman Vykuka
- */
 class UpdateBatch extends WriteBatch
 {
 
@@ -37,7 +40,7 @@ class UpdateBatch extends WriteBatch
 		if (!$this->builder) {
 			return;
 		}
-		
+
 		$this->query[self::UPDATE] = $this->preprocessor->processUpdate($this->query[self::UPDATE]);
 		$this->query[self::QUERY] = $this->preprocessor->processCondition($this->builder->getWhere());
 

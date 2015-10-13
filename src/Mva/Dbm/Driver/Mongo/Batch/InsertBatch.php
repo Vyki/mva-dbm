@@ -1,13 +1,16 @@
 <?php
 
+/**
+ * This file is part of the Mva\Dbm library.
+ * @license    MIT
+ * @link       https://github.com/Vyki/mva-dbm
+ */
+
 namespace Mva\Dbm\Driver\Mongo\Batch;
 
-use MongoInsertBatch,	
+use MongoInsertBatch,
 	Mva\Dbm\NotSupportedException;
 
-/**
- * @author Roman Vykuka
- */
 class InsertBatch extends WriteBatch
 {
 

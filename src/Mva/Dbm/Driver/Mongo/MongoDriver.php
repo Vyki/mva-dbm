@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * This file is part of the Mva\Dbm library.
+ * @license    MIT
+ * @link       https://github.com/Vyki/mva-dbm
+ */
+
 namespace Mva\Dbm\Driver\Mongo;
 
 use Nette,
@@ -80,4 +86,5 @@ class MongoDriver extends Nette\Object implements IDriver
 	{
 		return $this->preprocessor;
 	}
+
 }

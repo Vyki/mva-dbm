@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * This file is part of the Mva\Dbm library.
+ * @license    MIT
+ * @link       https://github.com/Vyki/mva-dbm
+ */
+
 namespace Mva\Dbm;
 
 use Nette,
@@ -7,10 +13,8 @@ use Nette,
 
 /**
  * Filtered collection representation.
- * Collection is based on the library Nette\Database http://doc.nette.org/en/2.3/database by Jakub Vrana, Jan Skrasek, David Grudl
+ * Collection is based on the library Nette\Database https://github.com/nette/database by Jakub Vrana, Jan Skrasek, David Grudl
  *
- * @author Roman Vykuka
- * 
  */
 class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Countable
 {
@@ -36,7 +40,7 @@ class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Counta
 	/** @var Connection */
 	protected $connection;
 
-	/** @var Driver\Mongo\MongoQueryBuilder */
+	/** @var Driver\IQueryBuilder */
 	protected $queryBuilder;
 
 	public function __construct(Connection $connection, $name)

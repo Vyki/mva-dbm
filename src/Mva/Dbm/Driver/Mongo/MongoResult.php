@@ -1,15 +1,16 @@
 <?php
 
+/**
+ * This file is part of the Mva\Dbm library.
+ * @license    MIT
+ * @link       https://github.com/Vyki/mva-dbm
+ */
+
 namespace Mva\Dbm\Driver\Mongo;
 
 use DateTime,
 	IteratorAggregate;
 
-/**
- * Description of MongoResult
- *
- * @author Roman Vykuka
- */
 class MongoResult implements IteratorAggregate
 {
 
@@ -49,7 +50,7 @@ class MongoResult implements IteratorAggregate
 				return $value;
 			}
 		}
-		
+
 		return NULL;
 	}
 

@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * This file is part of the Mva\Dbm library.
+ * @license    MIT
+ * @link       https://github.com/Vyki/mva-dbm
+ */
+
 namespace Mva\Dbm\Driver\Mongo;
 
 use Mva,
@@ -116,7 +122,7 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 			$result = new MongoResult([array_merge(['_id' => $return['upserted']], $data[$this->preprocessor->formatCmd('set')])]);
 			return $result->fetch();
 		}
-		
+
 		return $return['n'];
 	}
 
