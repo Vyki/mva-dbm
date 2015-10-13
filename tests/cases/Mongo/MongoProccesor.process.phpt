@@ -22,12 +22,46 @@ class MongoProcessor_ConditionsTest extends TestCase
 		$pc = $this->getProcessor();
 
 		$select1 = ['name' => TRUE, 'domain' => FALSE, 'item.subitem' => TRUE];
-		
+
 		Assert::same($select1, $pc->processSelect($select1));
-		
+
 		$select2 = ['name', '!domain', 'item.subitem'];
-		
+
 		Assert::same($select1, $pc->processSelect($select2));
+	}
+
+	function testProcesData()
+	{
+		$pc = $this->getProcessor();
+		
+		$actual = $pc->processData([
+			'type%s' => 'vehicle',
+			'width%i' => '27',
+			'height%f' => '34.4',
+			'positive%b' => 1,
+			'%%message%%s' => 'test',
+			'%%message%%%s' => 'test',
+			'samples%f[]' => ['1', '3.3', 3.4, 3],
+			'_id' => new \MongoId('54ccf5639ab253f598d6b4a5'),
+		]);
+
+		$expected = [
+			'type' => 'vehicle',
+			'width' => 27,
+			'height' => 34.4,
+			'positive' => TRUE,
+			'%message%s' => 'test',
+			'%message%' => 'test',
+			'samples' => [1.0, 3.3, 3.4, 3.0],
+			'_id' => $actual['_id'],
+		];
+
+		Assert::same($expected, $actual);
+		
+		$expdate = $pc->processData(['date' => new \DateTime('2000-01-01 01:02:03')]);
+		
+		Assert::true($expdate['date'] instanceof \MongoDate);
+		Assert::same($expdate['date']->sec, 946684923);
 	}
 
 	function testProcessUpdate()
@@ -35,14 +69,14 @@ class MongoProcessor_ConditionsTest extends TestCase
 		$pc = $this->getProcessor();
 
 		$data = [
-			'size' => 40,
-			'$set' => ['name' => 'test update'],
+			'size%f' => 40,
+			'$set' => ['name' => 'test update', 'rank%i' => '13.21'],
 			'$unset' => ['domain'],
 			'$rename' => ['type' => 'category']
 		];
 
 		$expected = [
-			'$set' => ['name' => 'test update', 'size' => 40],
+			'$set' => ['name' => 'test update', 'rank' => 13, 'size' => 40.0],
 			'$unset' => ['domain' => ''],
 			'$rename' => ['type' => 'category']
 		];

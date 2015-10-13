@@ -55,7 +55,7 @@ class MongoQueryProcessor extends Nette\Object
 				$select[$item] = TRUE;
 			}
 		}
-		
+
 		return $select;
 	}
 
@@ -77,6 +77,8 @@ class MongoQueryProcessor extends Nette\Object
 
 		if (empty($data[$set])) {
 			unset($data[$set]);
+		} else {
+			$data[$set] = $this->processData($data[$set]);
 		}
 
 		return $data;
@@ -206,6 +208,29 @@ class MongoQueryProcessor extends Nette\Object
 	}
 
 	/**
+	 * @param array ['name' => 'roman', 'age%i' => '27', 'numbers%i[]' => ['1', 2, 2.3]] 
+	 */
+	public function processData(array $data)
+	{
+		$return = [];
+
+		foreach ($data as $key => $item) {
+			if (($count = substr_count($key, '%')) > 0) {
+				$key = $count > 1 ? str_replace('%%', '%', $key) : $key;
+				if (($count % 2) > 0 && preg_match('#^(.*)%(\w+(?:\[\])?)$#', $key, $parts)) {
+					$key = $parts[1];
+					$item = $this->processModifier($parts[2], $item);
+				}
+			} elseif ($item instanceof \DateTime || $item instanceof \DateTimeImmutable) {
+				$item = $this->processModifier('dt', $item);
+			}
+			$return[$key] = $item;
+		}
+
+		return $return;
+	}
+
+	/**
 	 * @param  string $type
 	 * @param  mixed  $value
 	 * @return string
@@ -289,6 +314,9 @@ class MongoQueryProcessor extends Nette\Object
 					return $value;
 				}
 				break;
+
+			default:
+				return $value;
 		}
 	}
 
