@@ -19,7 +19,7 @@ class UpdateBatch extends WriteBatch
 		return new MongoUpdateBatch($this->driver->getCollection($name));
 	}
 
-	public function add($data, $upsert = FALSE, $multi = TRUE)
+	public function add(array $data, $upsert = FALSE, $multi = TRUE)
 	{
 		$this->finishItem();
 

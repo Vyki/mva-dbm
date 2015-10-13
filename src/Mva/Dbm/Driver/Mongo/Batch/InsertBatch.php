@@ -16,9 +16,9 @@ class InsertBatch extends WriteBatch
 		return new MongoInsertBatch($this->driver->getCollection($name));
 	}
 
-	public function add($item)
+	public function add(array $item)
 	{
-		$this->queue[] = $item;
+		$this->queue[] = $this->preprocessor->processData($item);
 	}
 
 	protected function finishItem()
