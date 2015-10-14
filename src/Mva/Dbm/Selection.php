@@ -8,15 +8,14 @@
 
 namespace Mva\Dbm;
 
-use Nette,
-	MongoCursor;
+use Nette;
 
 /**
  * Filtered collection representation.
  * Collection is based on the library Nette\Database https://github.com/nette/database by Jakub Vrana, Jan Skrasek, David Grudl
  *
  */
-class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Countable
+class Selection extends Nette\Object implements \IteratorAggregate, \Countable, \ArrayAccess
 {
 
 	/** @var string */
@@ -25,17 +24,11 @@ class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Counta
 	/** @var string */
 	protected $primaryModifier = '%oid';
 
-	/** @var MongoCursor|NULL|array */
-	protected $result;
-
-	/** @var Document data read from database in [primary key => Document] format */
-	protected $docs;
-
 	/** @var Document modifiable data in [primary key => Document] format */
 	public $data;
 
-	/** @var array of primary key values */
-	protected $keys = [];
+	/** @var \Generator */
+	protected $result;
 
 	/** @var Connection */
 	protected $connection;
@@ -78,14 +71,13 @@ class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Counta
 		]);
 
 		if (isset($updated[$this->primary])) {
-			$doc = $this->createDocument($updated);
+			$key = $updated[$this->primary];
 
-			if ($this->docs !== NULL) {
-				$this->docs[$updated[$this->primary]] = $doc;
-				$this->data[$updated[$this->primary]] = $doc;
+			if ($this->data !== NULL) {
+				$this[$key] = $updated;
 			}
 
-			return $doc;
+			return $this[$key];
 		}
 
 		return $updated;
@@ -99,14 +91,13 @@ class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Counta
 		$inserted = $this->connection->query->insert($this->queryBuilder->from, $data);
 
 		if (isset($inserted[$this->primary])) {
-			$doc = $this->createDocument($inserted);
+			$key = $inserted[$this->primary];
 
-			if ($this->docs !== NULL) {
-				$this->docs[$inserted[$this->primary]] = $doc;
-				$this->data[$inserted[$this->primary]] = $doc;
+			if ($this->data !== NULL) {
+				$this->data[$key] = $inserted;
 			}
 
-			return $doc;
+			return $this[$key];
 		}
 
 		return FALSE;
@@ -330,63 +321,41 @@ class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Counta
 
 	protected function execute()
 	{
-		if ($this->docs !== NULL) {
+		if ($this->data !== NULL) {
 			return;
 		}
 
-		$this->docs = [];
+		$this->data = [];
 
 		list($fields, $criteria, $options) = $this->queryBuilder->buildSelectQuery();
 
 		$result = $this->connection->query->select($this->queryBuilder->from, $fields, $criteria, $options);
 
-		foreach ($result as $index => $doc) {
-			$this->docs[$index] = $this->createDocument($doc);
+		foreach ($result as $key => $doc) {
+			$this->data[$key] = $this->createDocument($doc);
 		}
-
-		$this->data = $this->docs;
 	}
 
 	protected function emptyResultSet()
 	{
-		$this->docs = NULL;
+		$this->data = NULL;
 	}
 
 	##################  interface Iterator ##################
 
-	public function rewind()
+	public function getIterator()
 	{
 		$this->execute();
-		$this->keys = array_keys($this->data);
-		reset($this->keys);
+		return $this->createDocumentGenerator();
 	}
 
-	/** @return Document */
-	public function current()
+	##################  document Generator ##################
+
+	private function createDocumentGenerator()
 	{
-		if (($key = current($this->keys)) !== FALSE) {
-			return $this->data[$key];
-		} else {
-			return FALSE;
+		foreach ($this->data as $key => $value) {
+			yield $key => $value;
 		}
-	}
-
-	/**
-	 * @return string row ID
-	 */
-	public function key()
-	{
-		return current($this->keys);
-	}
-
-	public function next()
-	{
-		next($this->keys);
-	}
-
-	public function valid()
-	{
-		return current($this->keys) !== FALSE;
 	}
 
 	################## interface ArrayAccess ##################
@@ -400,7 +369,7 @@ class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Counta
 	public function offsetSet($key, $value)
 	{
 		$this->execute();
-		$this->docs[$key] = $value;
+		$this->data[$key] = $value instanceof Document ? $value : $this->createDocument($value);
 	}
 
 	/**
@@ -411,7 +380,7 @@ class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Counta
 	public function offsetGet($key)
 	{
 		$this->execute();
-		return $this->docs[$key];
+		return $this->data[$key];
 	}
 
 	/**
@@ -422,7 +391,7 @@ class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Counta
 	public function offsetExists($key)
 	{
 		$this->execute();
-		return isset($this->docs[$key]);
+		return isset($this->data[$key]);
 	}
 
 	/**
@@ -433,7 +402,7 @@ class Selection extends Nette\Object implements \Iterator, \ArrayAccess, \Counta
 	public function offsetUnset($key)
 	{
 		$this->execute();
-		unset($this->docs[$key], $this->data[$key]);
+		unset($this->data[$key]);
 	}
 
 }
