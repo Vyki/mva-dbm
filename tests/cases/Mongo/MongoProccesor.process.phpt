@@ -30,7 +30,7 @@ class MongoProcessor_ConditionsTest extends TestCase
 		Assert::same($select1, $pc->processSelect($select2));
 	}
 
-	function testProcesData()
+	function testProcessData()
 	{
 		$pc = $this->getProcessor();
 
@@ -62,6 +62,31 @@ class MongoProcessor_ConditionsTest extends TestCase
 
 		Assert::true($expdate['date'] instanceof \MongoDate);
 		Assert::same($expdate['date']->sec, 946684923);
+	}
+
+	function processDataRecursive()
+	{
+		$pc = $this->getProcessor();
+
+		$actual = $pc->processData([
+			'width%i' => '27',
+			'height%f' => '34.4',
+			'samples' => [
+				'one%s' => 12.3,
+				'two%i[]' => ['12', 13.3, 5]
+			]
+		]);
+
+		$expected = $pc->processData([
+			'width' => 27,
+			'height' => 34.4,
+			'samples' => [
+				'one' => '12.3',
+				'two' => [12, 13, 5]
+			]
+		]);
+
+		Assert::same($expected, $actual);
 	}
 
 	function testProcessUpdate()

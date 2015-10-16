@@ -252,6 +252,8 @@ class MongoQueryProcessor extends Nette\Object
 				$item = $this->processModifier($parts[2], $item);
 			} elseif ($item instanceof \DateTime || $item instanceof \DateTimeImmutable) {
 				$item = $this->processModifier('dt', $item);
+			} elseif (is_array($item)) {
+				$item = $this->processData($item);
 			}
 
 			$return[$key] = $item;
