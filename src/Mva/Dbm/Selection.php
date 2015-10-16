@@ -62,6 +62,9 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 		return $this->primary;
 	}
 
+	/** 	
+	 *  @return int|Document number of changed documents or upserted Document object
+	 */
 	public function update($data, $upsert = FALSE, $multi = TRUE)
 	{
 		$data = (array) $data;
@@ -83,7 +86,9 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 		return $updated;
 	}
 
-	/** @return Document|bool */
+	/**
+	 * @return Document|bool unserted Document object or FALSE
+	 */
 	public function insert($data)
 	{
 		$data = (array) $data;
@@ -110,7 +115,7 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 
 	/**
 	 * Adds where condition, more calls appends with AND.
-	 * @param string condition possibly containing ?
+	 * @param string condition possibly containing %modifier
 	 * @param mixed
 	 * @return self
 	 */
@@ -121,6 +126,11 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 		return $this;
 	}
 
+	/**
+	 * Condition for finding by primary key.
+	 * @param string primary key
+	 * @return self	 
+	 */
 	public function wherePrimary($key)
 	{
 		$this->where($this->primary . ' = ' . $this->primaryModifier, $key);
@@ -129,7 +139,7 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 
 	/**
 	 * Adds select item, more calls appends to the end.
-	 * @param string|array
+	 * @param string
 	 * @return self
 	 */
 	public function select($items)
@@ -301,12 +311,18 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 		return $return;
 	}
 
+	/**
+	 * @param string path looks like 'field|field[]field->field=field'
+	 * @return array|\stdClass
+	 */
 	public function fetchAssoc($path)
 	{
 		return Nette\Utils\Arrays::associate($this->fetchAll(), $path);
 	}
 
-	/** @return Document[] */
+	/**
+	 * @return Document[] 
+	 */
 	public function fetchAll()
 	{
 		return iterator_to_array($this);
@@ -314,6 +330,9 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 
 	##################  internal ##################
 
+	/**
+	 * @return Document
+	 */
 	protected function createDocument(array $doc)
 	{
 		return new Document($doc);
@@ -343,6 +362,9 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 
 	##################  interface Iterator ##################
 
+	/**
+	 * @return \Generator	 
+	 */
 	public function getIterator()
 	{
 		$this->execute();
@@ -351,6 +373,9 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 
 	##################  document Generator ##################
 
+	/**
+	 * @return \Generator	 
+	 */
 	private function createDocumentGenerator()
 	{
 		foreach ($this->data as $key => $value) {
@@ -363,7 +388,7 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 	/**
 	 * Set document.
 	 * @param  string document ID
-	 * @param  Document
+	 * @param  Document|array
 	 * @return NULL
 	 */
 	public function offsetSet($key, $value)

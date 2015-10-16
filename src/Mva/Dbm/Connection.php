@@ -38,7 +38,7 @@ class Connection extends Nette\Object
 	}
 
 	/**
-	 * Connects to a database.
+	 * Connects to a database
 	 * @return void
 	 * @throws ConnectionException
 	 */

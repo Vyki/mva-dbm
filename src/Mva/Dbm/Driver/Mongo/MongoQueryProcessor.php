@@ -64,6 +64,11 @@ class MongoQueryProcessor extends Nette\Object
 		return $select;
 	}
 
+	/**
+	 * Process update data 
+	 * @param array ['a' => 1, 'b%s' => 2, '$set' => ['c%i' => '3'], '$unset' => ['d', 'e'], ...]
+	 * @return array ['$set' => ['a' => 1, 'b' => '2', 'c' => 3], '$unset' => ['d' => '', 'e' => ''], ...]
+	 */
 	public function processUpdate(array $data)
 	{
 		$set = $this->formatCmd('set');
@@ -90,8 +95,9 @@ class MongoQueryProcessor extends Nette\Object
 	}
 
 	/**
-	 * 	@param array in format [['key1' => 'val'], ['item2 IN' => [1, 2, 4, 5]]] or ['key1' => 'val', 'key2 IN' => [1, 2, 4, 5]]
-	 * 	@param int 
+	 *  Process sets of conditions and merges them by AND operator
+	 * 	@param array in format [['a' => 1], ['b IN' => [1, 2]], [...]] or ['a' => 1, 'b IN' => [1, 2], ...]
+	 * 	@param array single condition ['a' => 1] or multiple condition ['$and' => ['a' => 1, 'b' => ['$in' => [1, 2]]], ...]
 	 */
 	public function processCondition(array $conditions, $depth = 0)
 	{
@@ -115,22 +121,27 @@ class MongoQueryProcessor extends Nette\Object
 		return $depth > 0 ? $parsed : (count($parsed) > 1 ? [$this->formatCmd('and') => $parsed] : $parsed[0]);
 	}
 
+	/**
+	 * Parses single condition
+	 * @param mixed
+	 * @param mixed	 
+	 */
 	private function parseCondition($condition, $parameters = [])
 	{
 		if (strpos($condition, ' ')) {
 			$match = preg_match('~^
-				(.+)\s							## identifier 
+				(.+)\s                          ## identifier 
 				(
-					(?:\$\w+) |					## $mongoOperator
-					(?:[A-Z]+(?:_[A-Z]+)*) |	## NAMED_OPERATOR or 
-					(?:[\<\>\!]?\=|\>|\<\>?)	## logical operator
+					(?:\$\w+) |                 ## $mongoOperator
+					(?:[A-Z]+(?:_[A-Z]+)*) |    ## NAMED_OPERATOR or 
+					(?:[\<\>\!]?\=|\>|\<\>?)    ## logical operator
 				)	
 				(?:
-					\s%(\w+(?:\[\])?) |			## modifier or
-					\s(.+)						## value
+					\s%(\w+(?:\[\])?) |         ## modifier or
+					\s(.+)                      ## value
 				)?$~xs', $condition, $cond);
 
-			//['cond IN' => 'param'], ['cond != ?' => 'param']
+			//['cond IN' => [...]], ['cond = %s' => 'param'], ['cond $gt' => 20]
 			if (!empty($match)) {
 
 				if (substr($cond[1], 0, 1) === $this->cmd) {
@@ -161,39 +172,11 @@ class MongoQueryProcessor extends Nette\Object
 		return [$condition => $parameters];
 	}
 
-	private function formatCondition($key, $op, $val, $modifier = NULL)
-	{
-		$operator = strtolower($op);
-
-		$value = $modifier ? $this->processModifier($modifier, $val) : $val;
-
-		//tries to translate operator
-		if (array_key_exists($operator, $this->operators)) {
-			$operator = $this->operators[$operator];
-		}
-
-		if ($operator === '=') {
-			return [$key => $value];
-		}
-
-		//$in and $nin need to reset keys
-		if ($operator === 'in' || $operator === 'nin') {
-			$value = array_values((array) $value);
-		}
-
-		//parses inner condition in $elemMatch
-		if ($operator === 'elem_match' && is_array($value)) {
-			$value = $this->parseDeepCondition($value);
-		}
-
-		//translates SQL like operator to mongo format ELEM_MATCH => $elemMatch
-		if (strpos($operator, '_') !== FALSE) {
-			$operator = lcfirst(str_replace(' ', '', ucwords(str_replace('_', ' ', $operator))));
-		}
-
-		return [(string) $key => [$this->formatCmd($operator) => $value]];
-	}
-
+	/**
+	 * Parses inner conditions
+	 * @param array 
+	 * @param bool indicates that output should be list	 
+	 */
 	private function parseDeepCondition(array $parameters, $toArray = FALSE)
 	{
 		$opcond = [];
@@ -213,7 +196,49 @@ class MongoQueryProcessor extends Nette\Object
 	}
 
 	/**
+	 * Formats condition
+	 * @param string item identifier
+	 * @param string operator
+	 * @param mixed  value
+	 * @param string modifier
+	 */
+	private function formatCondition($identifier, $operator, $value, $modifier = NULL)
+	{
+		$operator = strtolower($operator);
+
+		$value = $modifier ? $this->processModifier($modifier, $value) : $value;
+
+		//tries to translate operator
+		if (array_key_exists($operator, $this->operators)) {
+			$operator = $this->operators[$operator];
+		}
+
+		if ($operator === '=') {
+			return [$identifier => $value];
+		}
+
+		//$in and $nin need to reset keys
+		if ($operator === 'in' || $operator === 'nin') {
+			$value = array_values((array) $value);
+		}
+
+		//parses inner condition in $elemMatch
+		if ($operator === 'elem_match' && is_array($value)) {
+			$value = $this->parseDeepCondition($value);
+		}
+
+		//translates SQL like operator to mongo format ELEM_MATCH => $elemMatch
+		if (strpos($operator, '_') !== FALSE) {
+			$operator = lcfirst(str_replace(' ', '', ucwords(str_replace('_', ' ', $operator))));
+		}
+
+		return [(string) $identifier => [$this->formatCmd($operator) => $value]];
+	}
+
+	/**
+	 * Formats data types by modifiers
 	 * @param array ['name' => 'roman', 'age%i' => '27', 'numbers%i[]' => ['1', 2, 2.3]] 
+	 * @return array
 	 */
 	public function processData(array $data)
 	{
@@ -236,9 +261,10 @@ class MongoQueryProcessor extends Nette\Object
 	}
 
 	/**
-	 * @param  string $type
-	 * @param  mixed  $value
-	 * @return string
+	 * Tries to find modifier and returns value in needed type
+	 * @param  string s, i, dt, oid...
+	 * @param  mixed  object, string, number, bool...
+	 * @return mixed
 	 */
 	public function processModifier($type, $value)
 	{
@@ -327,17 +353,31 @@ class MongoQueryProcessor extends Nette\Object
 
 	############### internal ##############
 
-	protected function processArray($type, array &$values)
+	/**
+	 * Applies modifier to the inner array via reference 
+	 * 
+	 * @param string modifier
+	 * @param array  sets of values
+	 */
+	protected function processArray($modifier, array &$values)
 	{
 		foreach ($values as &$item) {
-			$item = $this->processModifier($type, $item);
+			$item = $this->processModifier($modifier, $item);
 		}
 	}
 
-	private function doubledModifier($value, $key)
+	/**
+	 *  Evaluates that modifier could be applied
+	 *  %%test%% -> [FALSE, '%test%'], %test -> [TRUE, '%test'], %%%test -> [TRUE, '%%test']
+	 * 
+	 *  @param string value with modifier %%test%% 
+	 *  @param string modifier - %, ...
+	 *  @return array [bool, string]
+	 */
+	private function doubledModifier($value, $modifier)
 	{
-		if (($count = substr_count($value, $key)) > 0) {
-			$value = $count > 1 ? str_replace($key . $key, $key, $value) : $value;
+		if (($count = substr_count($value, $modifier)) > 0) {
+			$value = $count > 1 ? str_replace($modifier . $modifier, $modifier, $value) : $value;
 			if (($count % 2) > 0) {
 				return [TRUE, $value];
 			}
