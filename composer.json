@@ -3,7 +3,7 @@
     "description": "MongoDB component",
     "homepage": "http://home.zcu.cz/~vykuka",
     "keywords": ["mva", "mongo"],
-    "license": ["BSD-3-Clause", "GPL-2.0", "GPL-3.0"],
+    "license": "MIT",
     "authors": [
 	{
 	    "name": "Roman Vykuka",
