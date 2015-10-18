@@ -20,6 +20,9 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 	/** @var MongoQueryProcessor */
 	private $preprocessor;
 
+	/** @var callable[] */
+	public $onQuery = [];
+
 	public function __construct(MongoDriver $driver)
 	{
 		$this->driver = $driver;
@@ -82,6 +85,8 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 		}
 
 		$result = $this->driver->getCollection($collection)->aggregateCursor($pipelines);
+
+		$this->onQuery($collection, 'aggregation', $pipeline, iterator_count($result));
 
 		return new MongoResult($result);
 	}
