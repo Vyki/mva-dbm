@@ -52,7 +52,7 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 		}
 
 		if ($fields === self::SELECT_COUNT) {
-			return $this->driver->getCollection($collection)->count($criteria, $options);
+			return $this->selectCount($collection, $criteria, $options);
 		}
 
 		$select = $this->preprocessor->processSelect((array) $fields);
@@ -71,7 +71,17 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 			$result->sort($options[self::SELECT_ORDER]);
 		}
 
+		$this->onQuery($collection, 'select', ['fields' => $select, 'criteria' => $criteria, 'options' => $options], ['matched' => $result->count()]);
+
 		return new MongoResult($result);
+	}
+
+	public function selectCount($collection, array $criteria = [], array $options = [])
+	{
+		$result = $this->driver->getCollection($collection)->count($criteria, $options);
+		$this->onQuery($collection, 'select - count', ['criteria' => $criteria, 'options' => $options], ['count' => $result]);
+
+		return $result;
 	}
 
 	public function selectAggregate($collection, $pipelines)
@@ -85,8 +95,7 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 		}
 
 		$result = $this->driver->getCollection($collection)->aggregateCursor($pipelines);
-
-		$this->onQuery($collection, 'aggregation', $pipeline, iterator_count($result));
+		$this->onQuery($collection, 'select - aggregate', ['pipelines' => $pipelines], ['matched' => iterator_count($result)]);
 
 		return new MongoResult($result);
 	}
@@ -99,6 +108,8 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 			$result[$key] = [$item => $row];
 		}
 
+		$this->onQuery($collection, 'select - distinct', ['fields' => $item, 'criteria' => $criteria], ['count' => count($result)]);
+
 		return new MongoResult($result);
 	}
 
@@ -106,15 +117,20 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 	{
 		$criteria = $criteria = $this->preprocessor->processCondition($criteria);
 		$return = $this->driver->getCollection($collection)->remove($criteria, $options);
+		$this->onQuery($collection, 'delete', ['criteria' => $criteria, 'options' => $options], ['deleted' => $return['n']]);
+
 		return $return['n'];
 	}
 
 	public function insert($collection, array $data, array $options = [])
 	{
 		$data = $this->preprocessor->processData($data);
-		$return = $this->driver->getCollection($collection)->insert($data, $options);
+		$this->driver->getCollection($collection)->insert($data, $options);
 		$result = new MongoResult([$data]);
-		return $result->fetch();
+		$data = $result->fetch();
+		$this->onQuery($collection, 'insert', ['data' => $data, 'options' => $options], ['inserted' => 1]);
+
+		return $data;
 	}
 
 	public function update($collection, array $data, array $criteria, array $options = [])
@@ -124,11 +140,18 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 		$return = $this->driver->getCollection($collection)->update($criteria, $data, $options);
 
 		if (isset($return['upserted'])) {
-			$result = new MongoResult([array_merge(['_id' => $return['upserted']], $data[$this->preprocessor->formatCmd('set')])]);
-			return $result->fetch();
+			$data = array_merge(['_id' => $return['upserted']], $data[$this->preprocessor->formatCmd('set')]);
+			$op = ['upsert', 'upserted'];
+		} else {
+			$op = ['update', 'updated'];
 		}
 
-		return $return['n'];
+		$result = new MongoResult([$data]);
+		$data = $result->fetch();
+
+		$this->onQuery($collection, $op[0], ['data' => $data, 'criteria' => $criteria, 'options' => $options], [$op[1] => $return['n']]);
+
+		return $op[0] === 'update' ? $return['n'] : $data;
 	}
 
 	public function insertBatch($collection)
