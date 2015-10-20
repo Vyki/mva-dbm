@@ -1,0 +1,41 @@
+<?php
+
+namespace Nextras\Dbal\Bridges\NetteTracy;
+
+use Tracy\Dumper;
+?>
+<div class="nette-UserPanel">
+	<h1>Queries: <?php echo $count ?></h1>
+	<table>
+		<tr><th>Collection</th><th>Operation</th><th>Params</th><th>Rows</th></tr>
+		<?php foreach ($queries as $query): ?>
+			<tr>
+				<td><?php echo $query[0] ?></td>
+				<td><span class="tracy-dump-string"><?php echo $query[1] ?></span></td>
+				<?php
+				foreach ($query[2] as $index => $param) {
+					if (empty($param)) {
+						unset($query[2][$index]);
+					}
+				}
+				?>
+				<td><?php echo empty($query[2]) ? '[]' : Dumper::toHtml($query[2], array(Dumper::LIVE => TRUE)) ?></td>
+				<td>
+					<?php if (is_array($query[3])): ?>
+						<code>
+							<?php foreach ($query[3] as $name => $value): ?>
+								<?php if ($value): ?>
+									<?php echo $name ?>:	
+									<?php echo $value ?><br>
+								<?php endif ?>
+							<?php endforeach ?> 
+						</code>
+					<?php else: ?>
+						<?php echo $query[3] ?>
+					<?php endif ?>
+				</td>
+
+			</tr>
+		<?php endforeach; ?>
+	</table>
+</div>
