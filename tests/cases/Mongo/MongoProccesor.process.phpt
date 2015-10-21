@@ -96,12 +96,14 @@ class MongoProcessor_ConditionsTest extends TestCase
 		$data = [
 			'size%f' => 40,
 			'$set' => ['name' => 'test update', 'rank%i' => '13.21'],
+			'$setOnInsert' => ['limit%i' => '10'],
 			'$unset' => ['domain'],
 			'$rename' => ['type' => 'category']
 		];
 
 		$expected = [
 			'$set' => ['name' => 'test update', 'rank' => 13, 'size' => 40.0],
+			'$setOnInsert' => ['limit' => 10],
 			'$unset' => ['domain' => ''],
 			'$rename' => ['type' => 'category']
 		];

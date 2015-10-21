@@ -73,6 +73,7 @@ class MongoQueryProcessor extends Nette\Object
 	{
 		$set = $this->formatCmd('set');
 		$unset = $this->formatCmd('unset');
+		$setoninsert = $this->formatCmd('setOnInsert');
 
 		$data[$set] = isset($data[$set]) ? $data[$set] : [];
 
@@ -85,10 +86,12 @@ class MongoQueryProcessor extends Nette\Object
 			}
 		}
 
-		if (empty($data[$set])) {
-			unset($data[$set]);
-		} else {
-			$data[$set] = $this->processData($data[$set]);
+		foreach ([$set, $setoninsert] as $cmd) {
+			if (empty($data[$cmd])) {
+				unset($data[$cmd]);
+			} else {
+				$data[$cmd] = $this->processData($data[$cmd]);
+			}
 		}
 
 		return $data;
