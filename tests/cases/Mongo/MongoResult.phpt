@@ -65,7 +65,7 @@ class MongoResultTest extends TestCase
 			'age' => 25,
 			'name' => 'Vendy',
 			'count' => 4
-		], $normalizedAggr);
+				], $normalizedAggr);
 	}
 
 	function testFetch()
@@ -86,6 +86,26 @@ class MongoResultTest extends TestCase
 		$result = new Driver\Mongo\MongoResult([$data[2]]);
 
 		Assert::same(25, $result->fetchField());
+	}
+
+	function testFetchPairs()
+	{
+		$data = $this->getResultData();
+		$result = new Driver\Mongo\MongoResult([$data[0], $data[1]]);
+
+		$expected1 = ['Roman' => $data[0], 'Vendy' => $data[1]];
+		$expected2 = array_keys($expected1);
+
+		foreach ($result->fetchPairs('name') as $index => $value) {
+			Assert::same($expected1[$index]['age'], $value['age']);
+			Assert::true($value['birth'] instanceof \DateTime);
+		}
+
+		foreach ($result->fetchPairs(NULL, 'name') as $index => $value) {
+			Assert::same($expected2[$index], $value);
+		}
+
+		Assert::same(['Roman' => 27, 'Vendy' => 25], $result->fetchPairs('name', 'age'));
 	}
 
 	function testFetchAll()
