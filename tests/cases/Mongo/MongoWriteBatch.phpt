@@ -111,6 +111,12 @@ class MongoWriteBatchTest extends TestCase
 
 	public function testExecute()
 	{
+		$log = [];
+
+		$this->connection->query->onQuery[] = function ($coll, $oper, $param, $res) use (&$log) {
+			$log[] = [$coll, $oper, $param, $res];
+		};
+
 		$batch = $this->getBatch();
 
 		$batch->insert($data1 = [
@@ -134,6 +140,29 @@ class MongoWriteBatchTest extends TestCase
 			"modified" => 3,
 			"upserted" => 0,
 			"removed" => 2], $result);
+
+		Assert::same($this->getExpectedLog(), $log);
+	}
+
+	public function testReset()
+	{
+		$batch = $this->getBatch();
+
+		$batch->insert(['pr_id' => 4, 'name' => 'Test 8', 'domain' => 'beta']);
+
+		$batch->update(['name' => 'Test 200', '$rename' => ['points' => 'coords']], ['pr_id' => 2]);
+
+		$batch->delete(['pr_id' => 1], FALSE);
+
+		$queue = $batch->getQueue();
+
+		Assert::count(1, $queue['insert']);
+		Assert::count(1, $queue['update']);
+		Assert::count(1, $queue['delete']);
+
+		$batch->reset();
+
+		Assert::same(['insert' => [], 'update' => [], 'delete' => []], $batch->getQueue());
 	}
 
 	public function testGetUpserted()
@@ -152,6 +181,32 @@ class MongoWriteBatchTest extends TestCase
 		Assert::count(1, $upserted);
 		Assert::type('string', reset($upserted));
 		Assert::type('int', key($upserted));
+	}
+
+	######################### data provider #########################3
+
+	public function getExpectedLog()
+	{
+		return [
+			[
+				'test_batch',
+				'insert - batch',
+				['w' => 1],
+				['inserted' => 1],
+			],
+			[
+				'test_batch',
+				'update - batch',
+				['w' => 1],
+				['matched' => 3, 'modified' => 3, 'upserted' => 0],
+			],
+			[
+				'test_batch',
+				'delete - batch',
+				['w' => 1],
+				['removed' => 2],
+			]
+		];
 	}
 
 }
