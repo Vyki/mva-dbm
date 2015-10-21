@@ -113,8 +113,12 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 		return new MongoResult($result);
 	}
 
-	public function delete($collection, array $criteria, array $options = [])
+	public function delete($collection, array $criteria, $options = [])
 	{
+		if (is_bool($options)) {
+			$options = [self::DELETE_ONE => $options];
+		}
+
 		$criteria = $criteria = $this->preprocessor->processCondition($criteria);
 		$return = $this->driver->getCollection($collection)->remove($criteria, $options);
 		$this->onQuery($collection, 'delete', ['criteria' => $criteria, 'options' => $options], ['deleted' => $return['n']]);
@@ -122,7 +126,7 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 		return $return['n'];
 	}
 
-	public function insert($collection, array $data, array $options = [])
+	public function insert($collection, array $data, $options = [])
 	{
 		$data = $this->preprocessor->processData($data);
 		$this->driver->getCollection($collection)->insert($data, $options);
@@ -133,40 +137,54 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 		return $data;
 	}
 
-	public function update($collection, array $data, array $criteria, array $options = [])
+	public function update($collection, array $data, array $criteria, $options = [], $multi = TRUE)
 	{
 		$data = $this->preprocessor->processUpdate($data);
+		$options = $this->processUpdateOptions($options, $multi);
 		$criteria = $this->preprocessor->processCondition($criteria);
-		$return = $this->driver->getCollection($collection)->update($criteria, $data, $options);
 
-		if (isset($return['upserted'])) {
-			$data = array_merge(['_id' => $return['upserted']], $data[$this->preprocessor->formatCmd('set')]);
-			$op = ['upsert', 'upserted'];
-		} else {
-			$op = ['update', 'updated'];
+		$result = $this->driver->getCollection($collection)->update($criteria, $data, $options);
+		list($op, $chname, $data) = $this->processUpdateResult($result, $data);
+		$this->onQuery($collection, $op, ['data' => $data, 'criteria' => $criteria, 'options' => $options], [$chname => $result['n']]);
+
+		return $op === 'update' ? $result['n'] : $data;
+	}
+
+	public function batch($collection)
+	{
+		return new MongoWriteBatch($this->driver, $collection);
+	}
+
+	################################## internals ##################################
+
+	private function processUpdateOptions($upsert, $multi)
+	{
+		$opt = is_array($upsert) ? $upsert : [];
+
+		if (!isset($opt[self::UPDATE_UPSERT])) {
+			$opt[self::UPDATE_UPSERT] = is_bool($upsert) ? $upsert : FALSE;
 		}
 
-		$result = new MongoResult([$data]);
-		$data = $result->fetch();
+		if (!isset($opt[self::UPDATE_MULTIPLE])) {
+			$opt[self::UPDATE_MULTIPLE] = (bool) $multi;
+		}
 
-		$this->onQuery($collection, $op[0], ['data' => $data, 'criteria' => $criteria, 'options' => $options], [$op[1] => $return['n']]);
-
-		return $op[0] === 'update' ? $return['n'] : $data;
+		return $opt;
 	}
 
-	public function insertBatch($collection)
+	private function processUpdateResult($result, $data)
 	{
-		return new Batch\InsertBatch($this->driver, $collection);
-	}
+		if (isset($result['upserted'])) {
+			$data = array_merge(['_id' => $result['upserted']], $data[$this->preprocessor->formatCmd('set')]);
+			$return = ['upsert', 'upserted'];
+		} else {
+			$return = ['update', 'modified'];
+		}
 
-	public function updateBatch($collection)
-	{
-		return new Batch\UpdateBatch($this->driver, $collection);
-	}
+		$mresult = new MongoResult([$data]);
+		$return[] = $mresult->fetch();
 
-	public function deleteBatch($collection)
-	{
-		return new Batch\DeleteBatch($this->driver, $collection);
+		return $return;
 	}
 
 }

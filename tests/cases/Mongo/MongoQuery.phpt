@@ -51,8 +51,7 @@ class MongoQueryTest extends TestCase
 		Assert::same(['test_query', 'select', [
 				'fields' => ['_id' => FALSE, 'name' => TRUE, 'domain' => TRUE],
 				'criteria' => ['domain' => 'beta'],
-				'options' => []
-		], ['matched' => count($data)]], $log);
+				'options' => []], ['matched' => count($data)]], $log);
 	}
 
 	function testDistinct()
@@ -100,8 +99,7 @@ class MongoQueryTest extends TestCase
 
 		Assert::same([
 			['size_total' => 199, 'domain' => 'beta'],
-			['size_total' => 82, 'domain' => 'alpha'],
-		], $result1->fetchAll());
+			['size_total' => 82, 'domain' => 'alpha']], $result1->fetchAll());
 
 		$builder->having('size_total > %i', 82);
 
@@ -111,9 +109,7 @@ class MongoQueryTest extends TestCase
 
 		$result2 = $query->select('test_query', $builder->buildAggreregateQuery());
 
-		Assert::same([
-			['size_total' => 199, 'domain' => 'beta'],
-		], $result2->fetchAll());
+		Assert::same([['size_total' => 199, 'domain' => 'beta']], $result2->fetchAll());
 
 		Assert::same(['test_query', 'select - aggregate', 3, ['matched' => count($result2)]], $log);
 	}
@@ -178,7 +174,11 @@ class MongoQueryTest extends TestCase
 		$ret = $query->update('test_query', $data, $condition);
 
 		Assert::same(1, $ret);
-		Assert::same(['test_query', 'update', ['data' => ['$set' => $data], 'criteria' => ['_id' => $oid], 'options' => []], ['updated' => $ret]], $log);
+
+		Assert::same(['test_query', 'update', [
+				'data' => ['$set' => $data],
+				'criteria' => ['_id' => $oid],
+				'options' => ['upsert' => FALSE, 'multiple' => TRUE]], ['modified' => $ret]], $log);
 
 		$result = $query->select('test_query', ['domain'], $condition)->fetch();
 		Assert::same('theta', $result['domain']);
@@ -203,13 +203,17 @@ class MongoQueryTest extends TestCase
 
 		$condition = ['domain' => 'gama'];
 
-		$data = $query->update('test_query', $insert, $condition, ['upsert' => TRUE]);
+		$data = $query->update('test_query', $insert, $condition, TRUE);
 
 		Assert::same(['_id', 'pr_id', 'name', 'domain', 'size', 'points', 'type'], array_keys($data));
-		Assert::type('string', $data['_id']);
-		Assert::same(['test_query', 'upsert', ['data' => $data, 'criteria' => $condition, 'options' => ['upsert' => TRUE]], ['upserted' => 1]], $log);
 
-		$rows = $query->update('test_query', $insert, $condition, ['upsert' => TRUE]);
+		Assert::type('string', $data['_id']);
+
+		Assert::same(['test_query', 'upsert', [
+				'data' => $data, 'criteria' => $condition,
+				'options' => ['upsert' => TRUE, 'multiple' => TRUE]], ['upserted' => 1]], $log);
+
+		$rows = $query->update('test_query', $insert, $condition, TRUE);
 		Assert::same(1, $rows);
 	}
 
@@ -264,7 +268,7 @@ class MongoQueryTest extends TestCase
 		};
 
 		$return = $query->delete('test_query', ['pr_id = %i' => 2]);
-		
+
 		Assert::same(3, $return);
 		Assert::same(['test_query', 'delete', ['criteria' => ['pr_id' => 2], 'options' => []], ['deleted' => 3]], $log);
 	}
