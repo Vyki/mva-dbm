@@ -28,14 +28,8 @@ class MongoWriteBatch extends Nette\Object
 	/** @var MongoQueryProcessor */
 	protected $preprocessor;
 
-	/** @var MongoWriteBatch */
-	protected $batch;
-
 	/** @var array */
 	protected $queue = ['insert' => [], 'update' => [], 'delete' => []];
-
-	/** @var array */
-	protected $query;
 
 	/** @var array */
 	private $upserted;
@@ -96,7 +90,7 @@ class MongoWriteBatch extends Nette\Object
 			}
 
 			$result = $batch->execute(['w' => 1]);
-			
+
 			if (isset($result['ok'])) {
 				$rows = $this->processResult($result);
 				$this->driver->query->onQuery($this->collection, "$op - batch", ['w' => 1], $rows);
@@ -111,7 +105,6 @@ class MongoWriteBatch extends Nette\Object
 		return $return;
 	}
 
-	/** @internal */
 	public function getQueue($op = NULL)
 	{
 		return $op && isset($this->queue[$op]) ? $this->queue[$op] : $this->queue;
