@@ -17,7 +17,6 @@ use Nette,
  */
 class MongoQueryProcessor extends Nette\Object
 {
-
 	private $cmd = '$';
 
 	/** @var array of SQL like operators and mongo equivalents */
@@ -126,11 +125,14 @@ class MongoQueryProcessor extends Nette\Object
 
 	/**
 	 * Parses single condition
-	 * @param mixed
-	 * @param mixed	 
+	 * @param $condition string
+	 * @param $parameters mixed
+	 * @throws InvalidArgumentException
 	 */
-	private function parseCondition($condition, $parameters = [])
+	private function parseCondition($condition)
 	{
+		list($parameters, $noparam) = func_num_args() < 2 ? [[], TRUE] : [func_get_arg(1), FALSE];
+
 		if (strpos($condition, ' ')) {
 			$match = preg_match('~^
 				(.+)\s                          ## identifier 
@@ -151,8 +153,16 @@ class MongoQueryProcessor extends Nette\Object
 					throw new InvalidArgumentException("Field name cannot start with '{$this->cmd}'");
 				}
 
+				if ($noparam && !isset($cond[4])) {
+					throw new InvalidArgumentException("Missing value for item '{$cond[1]}'");
+				}
+
 				return $this->formatCondition($cond[1], trim($cond[2], $this->cmd), isset($cond[4]) ? $cond[4] : $parameters, isset($cond[3]) ? $cond[3] : NULL);
 			}
+		}
+
+		if ($noparam) {
+			throw new InvalidArgumentException("Missing value for item '{$condition}'");
 		}
 
 		if (is_array($parameters) && ($value = reset($parameters))) {

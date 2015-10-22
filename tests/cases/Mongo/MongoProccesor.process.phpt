@@ -227,6 +227,23 @@ class MongoProcessor_ConditionsTest extends TestCase
 		Assert::same($conds3, $pc->processCondition($conds4));
 	}
 
+	function testIncompleteCondition()
+	{
+		$pc = $this->getProcessor();
+
+		$cond1 = ['domain = %s'];
+
+		Assert::exception(function() use ($pc, $cond1) {
+			$pc->processCondition($cond1);
+		}, 'Mva\Dbm\InvalidArgumentException');
+
+		$cond2 = ['domain'];
+
+		Assert::exception(function() use ($pc, $cond2) {
+			$pc->processCondition($cond2);
+		}, 'Mva\Dbm\InvalidArgumentException');
+	}
+
 }
 
 $test = new MongoProcessor_ConditionsTest();
