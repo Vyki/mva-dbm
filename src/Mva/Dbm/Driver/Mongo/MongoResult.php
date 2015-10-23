@@ -21,6 +21,9 @@ class MongoResult implements IteratorAggregate
 	/** @var \Generator */
 	private $resultGenerator = NULL;
 
+	/** @var array */
+	private $resultNormalized = [];
+
 	public function __construct($result)
 	{
 		$this->result = $result;
@@ -80,38 +83,30 @@ class MongoResult implements IteratorAggregate
 		return $return;
 	}
 
-	public function normalizeDocument(array $document)
+	public function normalizeDocument($document)
 	{
-		if (isset($document['_id']) && is_array($document['_id'])) {
+		$this->normalizeTree($document);
+		return $document;
+	}
+
+	##################  internal normalization ##################
+
+	private function normalizeTree(array &$document, $level = 0)
+	{
+		if ($level === 0 && isset($document['_id']) && is_array($document['_id'])) {
 			$document = array_merge($document, $document['_id']);
 			unset($document['_id']);
 		}
 
-		$return = [];
-
-		foreach ($document as $index => $item) {
-
-			if (is_object($item) === FALSE) {
-				$return[$index] = $item;
-				continue;
-			}
-
-			switch (get_class($item)) {
-				case 'MongoDate':
-				case 'MongoTimestamp':
-					$return[$index] = new DateTime('@' . (string) $item->sec);
-					break;
-
-				case 'MongoId':
-					$return[$index] = (string) $item;
-					break;
-
-				default:
-					$return[$index] = $item;
+		foreach ($document as &$item) {
+			if (is_array($item)) {
+				$this->normalizeTree($item, ++$level);
+			} elseif ($item instanceof \MongoDate || $item instanceof \MongoTimestamp) {
+				$item = new DateTime('@' . (string) $item->sec);
+			} elseif ($item instanceof \MongoId) {
+				$item = (string) $item;
 			}
 		}
-
-		return $return;
 	}
 
 	##################  interface Iterator ##################
@@ -125,8 +120,14 @@ class MongoResult implements IteratorAggregate
 
 	private function createResultGenerator()
 	{
-		foreach ($this->result as $key => $row) {
-			yield $key => $this->normalizeDocument($row);
+		foreach ($this->result as $key => $document) {
+
+			if (!array_key_exists($key, $this->resultNormalized)) {
+				$this->normalizeTree($document);
+				$this->resultNormalized[$key] = $document;
+			}
+
+			yield $key => $this->resultNormalized[$key];
 		}
 	}
 

@@ -64,8 +64,28 @@ class MongoResultTest extends TestCase
 		Assert::same([
 			'age' => 25,
 			'name' => 'Vendy',
-			'count' => 4
-				], $normalizedAggr);
+			'count' => 4], $normalizedAggr);
+	}
+
+	function testNormalizeRecursive()
+	{
+		$data = [
+			'name' => 'Roman',
+			'birth' => new MongoDate(),
+			'graduated' => [
+				'bachelors' => new MongoDate(),
+				'masters' => new MongoDate()
+			]
+		];
+
+		$result = new Driver\Mongo\MongoResult([]);
+		$normalized = $result->normalizeDocument($data);
+
+		var_dump($normalized);
+		
+		Assert::true($normalized['birth'] instanceof DateTime);
+		Assert::true($normalized['graduated']['bachelors'] instanceof DateTime);
+		Assert::true($normalized['graduated']['masters'] instanceof DateTime);
 	}
 
 	function testFetch()
