@@ -1,14 +1,16 @@
 <?php
 
-namespace Dbm\Tests;
+namespace Dbm\Tests\Collection;
 
 use Mva,
 	Tester\Assert,
-	Tester\TestCase;
+	Tester\TestCase,
+	Mva\Dbm\Collection\Document,
+	Mva\Dbm\Collection\Selection;
 
-$connection = require __DIR__ . "/../bootstrap.php";
+$connection = require __DIR__ . "/../../bootstrap.php";
 
-class CollectionBaseTest extends TestCase
+class SelectionBasicsTest extends TestCase
 {
 
 	private $connection;
@@ -20,18 +22,18 @@ class CollectionBaseTest extends TestCase
 
 	protected function setUp()
 	{
-		exec("mongoimport --db mva_test --drop --collection test_find < " . __DIR__ . "/test.json");
+		exec("mongoimport --db mva_test --drop --collection test_find < " . __DIR__ . "/../test.txt");
 	}
 
 	/** @return Mva\Mongo\Selection */
-	function getCollection()
+	function getSelection()
 	{
-		return new Mva\Dbm\Selection($this->connection, 'test_find');
+		return new Selection($this->connection, 'test_find');
 	}
 
 	function testWhere()
 	{
-		$collection = $this->getCollection();
+		$collection = $this->getSelection();
 
 		$collection->where('size < %i', 100);
 
@@ -45,7 +47,7 @@ class CollectionBaseTest extends TestCase
 
 	function testSelect()
 	{
-		$collection = $this->getCollection();
+		$collection = $this->getSelection();
 
 		$collection->select('domain', '!type');
 
@@ -54,7 +56,7 @@ class CollectionBaseTest extends TestCase
 
 	function testFetch()
 	{
-		$collection = $this->getCollection();
+		$collection = $this->getSelection();
 
 		$collection->select('domain', 'type', 'name');
 
@@ -62,14 +64,14 @@ class CollectionBaseTest extends TestCase
 
 		$document = $collection->fetch();
 
-		Assert::true($document instanceof Mva\Dbm\Document);
+		Assert::true($document instanceof Document);
 
 		Assert::same(['_id', 'name', 'domain', 'type'], array_keys($document->toArray()));
 	}
 
 	function testFetchAll()
 	{
-		$collection = $this->getCollection();
+		$collection = $this->getSelection();
 
 		$collection->select('domain', 'type', 'name');
 
@@ -79,7 +81,7 @@ class CollectionBaseTest extends TestCase
 
 		foreach ($collection as $row) {
 			++$i;
-			Assert::true($row instanceof Mva\Dbm\Document);
+			Assert::true($row instanceof Document);
 			Assert::same(['_id', 'name', 'domain', 'type'], array_keys($row->toArray()));
 		}
 
@@ -88,7 +90,7 @@ class CollectionBaseTest extends TestCase
 
 	function testFetchPairs()
 	{
-		$collection = $this->getCollection();
+		$collection = $this->getSelection();
 
 		$collection->select('domain', 'pr_id', '!_id')->where('pr_id', 1);
 
@@ -108,7 +110,7 @@ class CollectionBaseTest extends TestCase
 
 	function testFetchAssoc()
 	{
-		$collection = $this->getCollection();
+		$collection = $this->getSelection();
 
 		$collection->select('domain', 'pr_id');
 
@@ -123,7 +125,7 @@ class CollectionBaseTest extends TestCase
 
 	function testInsert()
 	{
-		$collection = $this->getCollection();
+		$collection = $this->getSelection();
 
 		$insert = [
 			'pr_id' => 3,
@@ -136,7 +138,7 @@ class CollectionBaseTest extends TestCase
 
 		$ret = $collection->insert($insert);
 
-		Assert::true($ret instanceof Mva\Dbm\Document);
+		Assert::true($ret instanceof Document);
 		Assert::true(isset($ret->_id));
 		Assert::true(isset($collection[$ret->_id]));
 
@@ -149,7 +151,7 @@ class CollectionBaseTest extends TestCase
 
 	function testUpdate()
 	{
-		$collection = $this->getCollection();
+		$collection = $this->getSelection();
 
 		$ret = $collection->where('name', 'Test 6')->update(['domain' => 'alpha']);
 
@@ -161,7 +163,7 @@ class CollectionBaseTest extends TestCase
 
 	function testUpsert()
 	{
-		$collection = $this->getCollection();
+		$collection = $this->getSelection();
 
 		$upsert = [
 			'pr_id' => 3,
@@ -174,7 +176,7 @@ class CollectionBaseTest extends TestCase
 
 		$ret = $collection->where('domain', 'theta')->update($upsert, TRUE);
 
-		Assert::true($ret instanceof Mva\Dbm\Document);
+		Assert::true($ret instanceof Document);
 		Assert::true(isset($ret->_id));
 		Assert::true(isset($collection[$ret->_id]));
 
@@ -187,7 +189,7 @@ class CollectionBaseTest extends TestCase
 
 	function testUpdateManipulation()
 	{
-		$collection = $this->getCollection();
+		$collection = $this->getSelection();
 
 		$collection->where('pr_id', 1)->update([
 			'size' => 40,
@@ -211,15 +213,15 @@ class CollectionBaseTest extends TestCase
 
 	function testLimit()
 	{
-		$fullrecord = $this->getCollection()->where('pr_id', 2);
+		$fullrecord = $this->getSelection()->where('pr_id', 2);
 
 		Assert::same(3, $fullrecord->count());
 
-		$limit1 = $this->getCollection()->limit(1, 1);
+		$limit1 = $this->getSelection()->limit(1, 1);
 		//gets second record
 		$first = $limit1->fetch();
 
-		$limit2 = $this->getCollection()->limit(2);
+		$limit2 = $this->getSelection()->limit(2);
 		//skip first record
 		$limit2->fetch();
 		//gets second record
@@ -234,7 +236,7 @@ class CollectionBaseTest extends TestCase
 
 }
 
-$test = new CollectionBaseTest($connection);
+$test = new SelectionBasicsTest($connection);
 $test->run();
 
 

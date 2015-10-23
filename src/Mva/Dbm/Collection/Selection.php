@@ -6,9 +6,10 @@
  * @link       https://github.com/Vyki/mva-dbm
  */
 
-namespace Mva\Dbm;
+namespace Mva\Dbm\Collection;
 
-use Nette;
+use Nette,
+	Mva\Dbm\Connection;
 
 /**
  * Filtered collection representation.

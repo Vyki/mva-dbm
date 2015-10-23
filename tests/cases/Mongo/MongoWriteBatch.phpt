@@ -22,7 +22,7 @@ class MongoWriteBatchTest extends TestCase
 
 	protected function setUp()
 	{
-		exec("mongoimport --db mva_test --drop --collection test_batch < " . __DIR__ . "/../test.json");
+		exec("mongoimport --db mva_test --drop --collection test_batch < " . __DIR__ . "/../test.txt");
 	}
 
 	public function getBatch()

@@ -3,3 +3,4 @@
 /composer.lock
 /nbproject
 /tests/**/output
+/tests/performance

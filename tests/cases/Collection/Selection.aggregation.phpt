@@ -1,14 +1,16 @@
 <?php
 
-namespace Dbm\Tests;
+namespace Dbm\Tests\Collection;
 
 use Mva,
 	Tester\Assert,
-	Tester\TestCase;
+	Tester\TestCase,
+	Mva\Dbm\Collection\Document,
+	Mva\Dbm\Collection\Selection;
 
-$connection = require __DIR__ . "/../bootstrap.php";
+$connection = require __DIR__ . "/../../bootstrap.php";
 
-class CollectionAggregationTest extends TestCase
+class SelectionAggregationTest extends TestCase
 {
 
 	private $connection;
@@ -20,18 +22,18 @@ class CollectionAggregationTest extends TestCase
 
 	protected function setUp()
 	{
-		exec("mongoimport --db mva_test --drop --collection test_agr < " . __DIR__ . "/test.json");
+		exec("mongoimport --db mva_test --drop --collection test_agr < " . __DIR__ . "/../test.txt");
 	}
 
 	/** @return Mva\Mongo\Selection */
-	function getCollection()
+	function getSelection()
 	{
-		return new Mva\Dbm\Selection($this->connection, 'test_agr');
+		return new Selection($this->connection, 'test_agr');
 	}
 
 	function testCount()
 	{
-		$collection = $this->getCollection();
+		$collection = $this->getSelection();
 
 		$count = $collection->count();
 
@@ -46,7 +48,7 @@ class CollectionAggregationTest extends TestCase
 
 	function testMaxMinSum()
 	{
-		$collection = $this->getCollection();
+		$collection = $this->getSelection();
 
 		$max = $collection->max('size');
 		$min = $collection->min('size');
@@ -68,15 +70,15 @@ class CollectionAggregationTest extends TestCase
 
 	function testFullAggregation()
 	{
-		$collection = $this->getCollection();
+		$collection = $this->getSelection();
 		$collection->select('SUM(size) AS size_total');
 		$collection->group('domain');
 		$collection->where('size > %i', 10);
 
 		$beta = $collection->fetch();
-		
-		Assert::true($beta instanceof Mva\Dbm\Document);
-		
+
+		Assert::true($beta instanceof Document);
+
 		Assert::equal('beta', $beta->domain);
 		Assert::equal(199, $beta->size_total);
 
@@ -98,7 +100,7 @@ class CollectionAggregationTest extends TestCase
 
 }
 
-$test = new CollectionAggregationTest($connection);
+$test = new SelectionAggregationTest($connection);
 $test->run();
 
 

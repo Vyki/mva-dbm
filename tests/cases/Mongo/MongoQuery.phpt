@@ -24,7 +24,7 @@ class MongoQueryTest extends TestCase
 
 	protected function setUp()
 	{
-		exec("mongoimport --db mva_test --drop --collection test_query < " . __DIR__ . "/../test.json");
+		exec("mongoimport --db mva_test --drop --collection test_query < " . __DIR__ . "/../test.txt");
 	}
 
 	/** @return Mva\Dbm\Driver\Mongo\MongoQuery */

@@ -12,7 +12,8 @@ use Mva,
 	Nette,
 	MongoDB,
 	MongoCollection,
-	Mva\Dbm\Driver\IDriver;
+	Mva\Dbm\Driver\IDriver,
+	Mva\Dbm\Collection\Selection;
 
 /**
  * Connection is inspired by https://github.com/nextras/dbal by Jan Skrasek
@@ -104,7 +105,7 @@ class Connection extends Nette\Object
 	 */
 	public function getSelection($name)
 	{
-		return new Mva\Dbm\Selection($this, $name);
+		return new Selection($this, $name);
 	}
 
 	/**

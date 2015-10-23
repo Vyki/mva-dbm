@@ -6,7 +6,7 @@
  * @link       https://github.com/Vyki/mva-dbm
  */
 
-namespace Mva\Dbm;
+namespace Mva\Dbm\Collection;
 
 class Document
 {
