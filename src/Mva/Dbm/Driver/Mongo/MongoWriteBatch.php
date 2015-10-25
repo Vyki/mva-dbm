@@ -97,7 +97,7 @@ class MongoWriteBatch extends Nette\Object
 				$return = $return + $rows;
 
 				if (isset($result['upserted'])) {
-					$this->upserted = new MongoResult($result['upserted']);
+					$this->upserted = $this->driver->resultFactory->create($result['upserted']);
 				}
 			}
 		}

@@ -5,7 +5,7 @@ namespace Dbm\Tests\Mongo;
 use Mva,
 	Tester\Assert,
 	Tester\TestCase,
-	Mva\Dbm\Driver\IQuery,
+	Mva\Dbm\Query\IQuery,
 	Mva\Dbm\Driver\Mongo\MongoQuery,
 	Mva\Dbm\Driver\Mongo\MongoQueryBuilder;
 

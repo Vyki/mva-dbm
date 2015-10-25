@@ -6,7 +6,7 @@
  * @link       https://github.com/Vyki/mva-dbm
  */
 
-namespace Mva\Dbm\Driver;
+namespace Mva\Dbm\Query;
 
 interface IQuery
 {

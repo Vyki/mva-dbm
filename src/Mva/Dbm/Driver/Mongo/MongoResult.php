@@ -9,13 +9,14 @@
 namespace Mva\Dbm\Driver\Mongo;
 
 use DateTime,
+	Mva\Dbm\Helpers,
 	IteratorAggregate,
-	Mva\Dbm\InvalidArgumentException;
+	Mva\Dbm\Result\IResult;
 
-class MongoResult implements IteratorAggregate
+class MongoResult implements IteratorAggregate, IResult
 {
 
-	/** @var \Traversable|array */
+	/** @var array|\Traversable */
 	private $result;
 
 	/** @var \Generator */
@@ -60,27 +61,7 @@ class MongoResult implements IteratorAggregate
 
 	public function fetchPairs($key = NULL, $value = NULL)
 	{
-		$return = [];
-
-		if ($key === NULL && $value === NULL) {
-			throw new InvalidArgumentException('FetchPairsHelper requires defined key or value.');
-		}
-
-		if ($key === NULL) {
-			foreach ($this as $row) {
-				$return[] = $row[$value];
-			}
-		} elseif ($value === NULL) {
-			foreach ($this as $row) {
-				$return[is_object($row[$key]) ? (string) $row[$key] : $row[$key]] = $row;
-			}
-		} else {
-			foreach ($this as $row) {
-				$return[is_object($row[$key]) ? (string) $row[$key] : $row[$key]] = $row[$value];
-			}
-		}
-
-		return $return;
+		return Helpers::fetchPairs($this, $key, $value);
 	}
 
 	public function normalizeDocument($document)

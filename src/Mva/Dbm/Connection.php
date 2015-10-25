@@ -8,16 +8,14 @@
 
 namespace Mva\Dbm;
 
-use Mva,
-	Nette,
+use Nette,
 	MongoDB,
 	MongoCollection,
-	Mva\Dbm\Driver\IDriver,
 	Mva\Dbm\Collection\Selection;
 
 /**
  * Connection is inspired by https://github.com/nextras/dbal by Jan Skrasek
- * @property-read Driver\IQuery $query
+ * @property-read Query\IQuery $query
  * @property-read Driver\IDriver $driver
  */
 class Connection extends Nette\Object

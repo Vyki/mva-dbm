@@ -80,8 +80,6 @@ class MongoResultTest extends TestCase
 
 		$result = new Driver\Mongo\MongoResult([]);
 		$normalized = $result->normalizeDocument($data);
-
-		var_dump($normalized);
 		
 		Assert::true($normalized['birth'] instanceof DateTime);
 		Assert::true($normalized['graduated']['bachelors'] instanceof DateTime);

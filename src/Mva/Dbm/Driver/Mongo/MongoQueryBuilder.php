@@ -9,8 +9,8 @@
 namespace Mva\Dbm\Driver\Mongo;
 
 use Nette,
-	Mva\Dbm\Driver\IQuery,
-	Mva\Dbm\Driver\IQueryBuilder;
+	Mva\Dbm\Query\IQuery,
+	Mva\Dbm\Query\IQueryBuilder;
 
 /**
  * MongoQueryBuilder is inspired by Nette\Database https://github.com/nette/database by Jakub Vrana, Jan Skrasek, David Grudl

@@ -12,6 +12,7 @@ use Nette,
 	MongoDB,
 	MongoClient,
 	Mva\Dbm\Driver\IDriver,
+	Mva\Dbm\Result\IResultFactory,
 	Mva\Dbm\Driver\Mongo\MongoQueryBuilder as Builder;
 
 /**
@@ -31,6 +32,9 @@ class MongoDriver extends Nette\Object implements IDriver
 
 	/** @var MongoQueryProcessor */
 	private $preprocessor;
+
+	/** @var IResultFactory */
+	private $resultFactory;
 
 	/** @var MongoQuery */
 	private $query;
@@ -53,6 +57,9 @@ class MongoDriver extends Nette\Object implements IDriver
 
 			$this->connection = new MongoClient($dsn);
 		}
+
+		$this->resultFactory = isset($config['resultFactory']) ? $config['resultFactory'] : new MongoResultFactory();
+		$this->resultFactory->setDriver($this);
 
 		$this->database = $this->connection->selectDB($config['database']);
 	}
@@ -80,6 +87,11 @@ class MongoDriver extends Nette\Object implements IDriver
 	public function getQuery()
 	{
 		return $this->query;
+	}
+
+	public function getResultFactory()
+	{
+		return $this->resultFactory;
 	}
 
 	public function getPreprocessor()

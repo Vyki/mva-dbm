@@ -9,9 +9,10 @@
 namespace Mva\Dbm\Driver\Mongo;
 
 use Mva,
-	Nette;
+	Nette,
+	Mva\Dbm\Query\IQuery;
 
-class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
+class MongoQuery extends Nette\Object implements IQuery
 {
 
 	/** @var MongoDriver */
@@ -73,7 +74,7 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 
 		$this->onQuery($collection, 'select', ['fields' => $select, 'criteria' => $criteria, 'options' => $options], ['matched' => $result->count()]);
 
-		return new MongoResult($result);
+		return $this->createResult($result);
 	}
 
 	public function selectCount($collection, array $criteria = [], array $options = [])
@@ -97,7 +98,7 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 		$result = $this->driver->getCollection($collection)->aggregateCursor($pipelines);
 		$this->onQuery($collection, 'select - aggregate', ['pipelines' => $pipelines], ['matched' => iterator_count($result)]);
 
-		return new MongoResult($result);
+		return $this->createResult($result);
 	}
 
 	public function selectDistinct($collection, $item, array $criteria = [])
@@ -110,7 +111,7 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 
 		$this->onQuery($collection, 'select - distinct', ['fields' => $item, 'criteria' => $criteria], ['count' => count($result)]);
 
-		return new MongoResult($result);
+		return $this->createResult($result);
 	}
 
 	public function delete($collection, array $criteria, $options = [])
@@ -130,8 +131,7 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 	{
 		$data = $this->preprocessor->processData($data);
 		$this->driver->getCollection($collection)->insert($data, $options);
-		$result = new MongoResult([$data]);
-		$data = $result->fetch();
+		$data = $this->createResult([$data])->fetch();
 		$this->onQuery($collection, 'insert', ['data' => $data, 'options' => $options], ['inserted' => 1]);
 
 		return $data;
@@ -157,6 +157,12 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 
 	################################## internals ##################################
 
+	/** @return Mva\Dbm\Result\IResult */
+	protected function createResult($data)
+	{
+		return $this->driver->resultFactory->create($data);
+	}
+
 	private function processUpdateOptions($upsert, $multi)
 	{
 		$opt = is_array($upsert) ? $upsert : [];
@@ -181,8 +187,7 @@ class MongoQuery extends Nette\Object implements Mva\Dbm\Driver\IQuery
 			$return = ['update', 'modified'];
 		}
 
-		$mresult = new MongoResult([$data]);
-		$return[] = $mresult->fetch();
+		$return[] = $this->createResult([$data])->fetch();
 
 		return $return;
 	}
