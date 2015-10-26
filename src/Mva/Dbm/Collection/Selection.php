@@ -70,9 +70,9 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 	{
 		$data = (array) $data;
 
-		$updated = $this->connection->query->update($this->queryBuilder->from, $data, $this->queryBuilder->where, [
-			'multiple' => (bool) $multi, 'upsert' => (bool) $upsert
-		]);
+		$updated = $this->connection->query->update(
+				$this->queryBuilder->from, $data, $this->queryBuilder->where, (bool) $upsert, (bool) $multi
+		);
 
 		if (isset($updated[$this->primary])) {
 			$key = $updated[$this->primary];
@@ -88,7 +88,7 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 	}
 
 	/**
-	 * @return Document|bool unserted Document object or FALSE
+	 * @return Document|bool inserted Document object or FALSE
 	 */
 	public function insert($data)
 	{
