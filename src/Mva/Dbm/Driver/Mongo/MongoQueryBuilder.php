@@ -241,7 +241,7 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 			return $this;
 		}
 
-		$this->where[] = empty($parameters) ? [$condition] : [$condition => $parameters];
+		$this->where[] = $parameters === [] ? [$condition] : [$condition => $parameters];
 
 		return $this;
 	}
@@ -277,7 +277,7 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 			return $this;
 		}
 
-		$this->having[] = empty($parameters) ? [$condition] : [$condition => $parameters];
+		$this->having[] = $parameters === [] ? [$condition] : [$condition => $parameters];
 
 		return $this;
 	}

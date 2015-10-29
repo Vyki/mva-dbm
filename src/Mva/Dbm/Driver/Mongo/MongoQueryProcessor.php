@@ -131,10 +131,8 @@ class MongoQueryProcessor extends Nette\Object
 	 * @param $parameters mixed
 	 * @throws InvalidArgumentException
 	 */
-	private function parseCondition($condition)
+	private function parseCondition($condition, $parameters = [])
 	{
-		list($parameters, $noparam) = func_num_args() < 2 ? [[], TRUE] : [func_get_arg(1), FALSE];
-
 		if (strpos($condition, ' ')) {
 			$match = preg_match('~^
 				(.+)\s                          ## identifier 
@@ -155,7 +153,7 @@ class MongoQueryProcessor extends Nette\Object
 					throw new InvalidArgumentException("Field name cannot start with '{$this->cmd}'");
 				}
 
-				if ($noparam && !isset($cond[4])) {
+				if ($parameters === [] && !isset($cond[4])) {
 					throw new InvalidArgumentException("Missing value for item '{$cond[1]}'");
 				}
 
@@ -163,7 +161,7 @@ class MongoQueryProcessor extends Nette\Object
 			}
 		}
 
-		if ($noparam) {
+		if ($parameters === []) {
 			throw new InvalidArgumentException("Missing value for item '{$condition}'");
 		}
 
