@@ -96,7 +96,7 @@ class MongoQuery extends Nette\Object implements IQuery
 		}
 
 		$result = $this->driver->getCollection($collection)->aggregateCursor($pipelines);
-		$this->onQuery($collection, 'select - aggregate', ['pipelines' => $pipelines], ['matched' => iterator_count($result)]);
+		$this->onQuery($collection, 'select - aggregate', $pipelines, ['count' => iterator_count($result)]);
 
 		return $this->createResult($result);
 	}

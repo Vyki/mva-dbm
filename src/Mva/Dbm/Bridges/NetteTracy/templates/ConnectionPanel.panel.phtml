@@ -19,7 +19,7 @@ use Tracy\Dumper;
 					}
 				}
 				?>
-				<td><?php echo empty($query[2]) ? '[]' : Dumper::toHtml($query[2], array(Dumper::LIVE => TRUE)) ?></td>
+				<td><?php echo empty($query[2]) ? '[]' : Dumper::toHtml($query[2], array(Dumper::DEPTH => 7, Dumper::LIVE => TRUE)) ?></td>
 				<td>
 					<?php if (is_array($query[3])): ?>
 						<code>
