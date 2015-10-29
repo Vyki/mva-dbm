@@ -104,14 +104,14 @@ class MongoQueryTest extends TestCase
 		$builder->having('size_total > %i', 82);
 
 		$query->onQuery[] = function ($coll, $oper, $param, $res) use (&$log) {
-			$log = [$coll, $oper, count($param['pipelines']), $res];
+			$log = [$coll, $oper, count($param), $res];
 		};
 
 		$result2 = $query->select('test_query', $builder->buildAggreregateQuery());
 
 		Assert::same([['size_total' => 199, 'domain' => 'beta']], $result2->fetchAll());
 
-		Assert::same(['test_query', 'select - aggregate', 3, ['matched' => count($result2)]], $log);
+		Assert::same(['test_query', 'select - aggregate', 3, ['count' => count($result2)]], $log);
 	}
 
 	function testAggregationCount()
