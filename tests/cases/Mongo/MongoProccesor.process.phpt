@@ -203,11 +203,34 @@ class MongoProcessor_ConditionsTest extends TestCase
 		Assert::same($results, $pc->processCondition($cond2));
 	}
 
+	function testProcessCondition_like()
+	{
+		$pc = $this->getProcessor();
+
+		$cond1 = ['domain LIKE' => '%test'];
+		$regx1 = $pc->processCondition($cond1);
+
+		Assert::true($regx1['domain'] instanceof \MongoRegex);
+		Assert::same($regx1['domain']->regex, 'test$');
+
+		$cond2 = ['domain LIKE' => 'test%'];
+		$regx2 = $pc->processCondition($cond2);
+
+		Assert::true($regx2['domain'] instanceof \MongoRegex);
+		Assert::same($regx2['domain']->regex, '^test');
+
+		$cond3 = ['domain LIKE' => '%test%'];
+		$regx3 = $pc->processCondition($cond3);
+
+		Assert::true($regx3['domain'] instanceof \MongoRegex);
+		Assert::same($regx3['domain']->regex, 'test');
+	}
+
 	function testProcessCondition_structure()
 	{
 		$pc = $this->getProcessor();
 
-		$conds1 = [['domain = bus', 'size > %i' => '45'], ['pr_id IN' => [1, 2]]];
+		$conds1 = [['domain = bus', 'size > %i' => '45'], ['pr_id IN %i[]' => [1, 2]]];
 
 		$conds2 = ['domain = bus', 'size > %i' => '45', 'pr_id IN' => [1, 2]];
 

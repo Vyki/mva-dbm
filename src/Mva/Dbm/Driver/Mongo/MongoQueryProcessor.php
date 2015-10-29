@@ -17,11 +17,13 @@ use Nette,
  */
 class MongoQueryProcessor extends Nette\Object
 {
+
 	private $cmd = '$';
 
 	/** @var array of SQL like operators and mongo equivalents */
 	private $operators = [
 		'=' => '=',
+		'like' => '=',
 		'<>' => 'ne',
 		'!=' => 'ne',
 		'<=' => 'lte',
@@ -219,6 +221,11 @@ class MongoQueryProcessor extends Nette\Object
 	{
 		$operator = strtolower($operator);
 
+		if ($operator === 'like') {
+			$value = $this->processLikeOperator($value);
+			$modifier = 're';
+		}
+
 		$value = $modifier ? $this->processModifier($modifier, $value) : $value;
 
 		//tries to translate operator
@@ -367,6 +374,18 @@ class MongoQueryProcessor extends Nette\Object
 	}
 
 	############### internal ##############
+
+	/**
+	 * Converts SQL LIKE to MongoRegex
+	 * @param string value with wildcard - %test, test%, %test% 	 
+	 */
+	protected function processLikeOperator($value)
+	{
+		$value = preg_quote($value);
+		$value = substr($value, 0, 1) === '%' ? (substr($value, -1, 1) === '%' ? substr($value, 1, -1) : substr($value, 1) . '$') : (substr($value, -1, 1) === '%' ? '^' . substr($value, 0, -1) : $value);
+
+		return '/' . $value . '/i';
+	}
 
 	/**
 	 * Applies modifier to the inner array via reference 
