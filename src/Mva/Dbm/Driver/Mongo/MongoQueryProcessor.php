@@ -73,26 +73,30 @@ class MongoQueryProcessor extends Nette\Object
 	public function processUpdate(array $data)
 	{
 		$set = $this->formatCmd('set');
-		$unset = $this->formatCmd('unset');
-		$setoninsert = $this->formatCmd('setOnInsert');
 
 		$data[$set] = isset($data[$set]) ? $data[$set] : [];
 
 		foreach ($data as $index => $value) {
+
 			if (substr($index, 0, 1) !== $this->cmd) {
 				$data[$set][$index] = $value;
 				unset($data[$index]);
-			} elseif ($index === $unset) {
-				$data[$unset] = array_fill_keys(array_values((array) $data[$unset]), '');
+				continue;
+			}
+
+			$ckey = substr($index, 1);
+
+			if ($ckey === 'unset') {
+				$data[$index] = array_fill_keys(array_values((array) $value), '');
+			} elseif (in_array($ckey, ['setOnInsert', 'addToSet', 'push'])) {
+				$data[$index] = $this->processData($value);
 			}
 		}
 
-		foreach ([$set, $setoninsert] as $cmd) {
-			if (empty($data[$cmd])) {
-				unset($data[$cmd]);
-			} else {
-				$data[$cmd] = $this->processData($data[$cmd]);
-			}
+		if (empty($data[$set])) {
+			unset($data[$set]);
+		} else {
+			$data[$set] = $this->processData($data[$set]);
 		}
 
 		return $data;

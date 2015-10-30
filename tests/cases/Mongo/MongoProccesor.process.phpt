@@ -98,14 +98,30 @@ class MongoProcessor_ConditionsTest extends TestCase
 			'$set' => ['name' => 'test update', 'rank%i' => '13.21'],
 			'$setOnInsert' => ['limit%i' => '10'],
 			'$unset' => ['domain'],
-			'$rename' => ['type' => 'category']
+			'$addToSet' => ['score%i' => '89'],
+			'$rename' => ['type' => 'category'],
+			'$push' => [
+				'quizzes' => [
+					'$each' => [['wk%i' => '5', 'score%f' => 8], ['wk%i' => '4', 'score%f' => 7]],
+					'$sort' => ['score' => -1],
+					'$slice' => 3
+				]
+			]
 		];
 
 		$expected = [
 			'$set' => ['name' => 'test update', 'rank' => 13, 'size' => 40.0],
 			'$setOnInsert' => ['limit' => 10],
 			'$unset' => ['domain' => ''],
-			'$rename' => ['type' => 'category']
+			'$addToSet' => ['score' => 89],
+			'$rename' => ['type' => 'category'],
+			'$push' => [
+				'quizzes' => [
+					'$each' => [['wk' => 5, 'score' => 8.0], ['wk' => 4, 'score' => 7.0]],
+					'$sort' => ['score' => -1],
+					'$slice' => 3
+				]
+			]
 		];
 
 		Assert::same($expected, $pc->processUpdate($data));
