@@ -31,6 +31,24 @@ class SelectionBasicsTest extends TestCase
 		return new Selection($this->connection, 'test_find');
 	}
 
+	function testWherePrimary_SetPrimary()
+	{
+		$collection = $this->getSelection();
+
+		$collection->wherePrimary('5bce658d5b');
+
+		$collection->setPrimary('pid');
+		$collection->wherePrimary('4bceacb8db');
+
+		$collection->setPrimary('domain_id', '%s');
+		$collection->wherePrimary('abce658d5c');
+
+		Assert::same([
+			['_id = %oid' => '5bce658d5b'],
+			['pid = %oid' => '4bceacb8db'],
+			['domain_id = %s' => 'abce658d5c']], $collection->queryBuilder->where);
+	}
+
 	function testWhere()
 	{
 		$collection = $this->getSelection();

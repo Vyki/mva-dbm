@@ -20,7 +20,7 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 {
 
 	/** @var string */
-	protected $primary = '_id';
+	protected $primaryKey = '_id';
 
 	/** @var string */
 	protected $primaryModifier = '%oid';
@@ -58,9 +58,15 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 		return $this->queryBuilder;
 	}
 
+	public function setPrimary($key, $modifier = NULL)
+	{
+		$this->primaryKey = (string) $key;
+		$modifier && $this->primaryModifier = (string) $modifier;
+	}
+
 	public function getPrimary()
 	{
-		return $this->primary;
+		return $this->primaryKey;
 	}
 
 	/** 	
@@ -74,8 +80,8 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 				$this->queryBuilder->from, $data, $this->queryBuilder->where, (bool) $upsert, (bool) $multi
 		);
 
-		if (isset($updated[$this->primary])) {
-			$key = $updated[$this->primary];
+		if (isset($updated[$this->primaryKey])) {
+			$key = $updated[$this->primaryKey];
 
 			if ($this->data !== NULL) {
 				$this[$key] = $updated;
@@ -96,8 +102,8 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 
 		$inserted = $this->connection->query->insert($this->queryBuilder->from, $data);
 
-		if (isset($inserted[$this->primary])) {
-			$key = $inserted[$this->primary];
+		if (isset($inserted[$this->primaryKey])) {
+			$key = $inserted[$this->primaryKey];
 
 			if ($this->data !== NULL) {
 				$this->data[$key] = $inserted;
@@ -134,7 +140,7 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 	 */
 	public function wherePrimary($key)
 	{
-		$this->where($this->primary . ' = ' . $this->primaryModifier, $key);
+		$this->where($this->primaryKey . ' = ' . $this->primaryModifier, $key);
 		return $this;
 	}
 
