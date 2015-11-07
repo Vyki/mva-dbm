@@ -9,6 +9,7 @@
 namespace Mva\Dbm\Driver\Mongo;
 
 use Nette,
+	Mva\Dbm\Helpers,
 	Mva\Dbm\InvalidArgumentException;
 
 /**
@@ -262,7 +263,7 @@ class MongoQueryProcessor extends Nette\Object
 	 * @param array ['name' => 'roman', 'age%i' => '27', 'numbers%i[]' => ['1', 2, 2.3]] 
 	 * @return array
 	 */
-	public function processData(array $data)
+	public function processData(array $data, $expand = FALSE)
 	{
 		$return = [];
 
@@ -278,7 +279,11 @@ class MongoQueryProcessor extends Nette\Object
 				$item = $this->processData($item);
 			}
 
-			$return[$key] = $item;
+			if ($expand && strpos($key, '.') !== FALSE) {
+				Helpers::expandRow($return, $key, $item);
+			} else {
+				$return[$key] = $item;
+			}
 		}
 
 		return $return;

@@ -141,13 +141,16 @@ class MongoQueryTest extends TestCase
 			'domain' => 'beta',
 			'size' => 101,
 			'points%f[]' => ['18.0', 31.32, 64],
-			'type' => 10
+			'type' => 10,
+			'flag.a' => 'a',
+			'flag.b' => 'b'
 		];
 
 		$data = $query->insert('test_query', $insert);
 
 		Assert::type('array', $data);
-		Assert::same(['pr_id', 'name', 'domain', 'size', 'points', 'type', '_id'], array_keys($data));
+		Assert::same(['pr_id', 'name', 'domain', 'size', 'points', 'type', 'flag', '_id'], array_keys($data));
+		Assert::same(['a' => 'a', 'b' => 'b'], $data['flag']);
 		Assert::type('string', $data['_id']);
 		Assert::same(['test_query', 'insert', ['data' => $data, 'options' => []], ['inserted' => 1]], $log);
 

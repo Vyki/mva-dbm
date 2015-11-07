@@ -129,7 +129,7 @@ class MongoQuery extends Nette\Object implements IQuery
 
 	public function insert($collection, array $data, $options = [])
 	{
-		$data = $this->preprocessor->processData($data);
+		$data = $this->preprocessor->processData($data, TRUE);
 		$this->driver->getCollection($collection)->insert($data, $options);
 		$data = $this->createResult([$data])->fetch();
 		$this->onQuery($collection, 'insert', ['data' => $data, 'options' => $options], ['inserted' => 1]);

@@ -77,16 +77,36 @@ class MongoProcessor_ConditionsTest extends TestCase
 			]
 		]);
 
-		$expected = $pc->processData([
+		$expected = [
 			'width' => 27,
 			'height' => 34.4,
 			'samples' => [
 				'one' => '12.3',
 				'two' => [12, 13, 5]
 			]
-		]);
+		];
 
 		Assert::same($expected, $actual);
+	}
+
+	function testProcessDataExpandRow()
+	{
+		$pc = $this->getProcessor();
+
+		$actual = $pc->processData([
+			'name' => 'Roman',
+			'coords.x%i' => '12',
+			'coords.y' => 15,
+			'city.0' => 'Pilsen',
+			'city.1' => 'Prague'], TRUE);
+
+		$expected = [
+			'name' => 'Roman',
+			'coords' => ['x' => 12, 'y' => 15],
+			'city' => ['Pilsen', 'Prague']
+		];
+
+		Assert::same($actual, $expected);
 	}
 
 	function testProcessUpdate()
