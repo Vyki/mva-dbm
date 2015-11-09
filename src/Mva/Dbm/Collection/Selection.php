@@ -82,12 +82,13 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 
 		if (isset($updated[$this->primaryKey])) {
 			$key = $updated[$this->primaryKey];
+			$doc = $this->createDocument($updated);
 
 			if ($this->data !== NULL) {
-				$this[$key] = $updated;
+				$this->data[$key] = $doc;
 			}
 
-			return $this[$key];
+			return $doc;
 		}
 
 		return $updated;
@@ -104,12 +105,13 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 
 		if (isset($inserted[$this->primaryKey])) {
 			$key = $inserted[$this->primaryKey];
+			$doc = $this->createDocument($inserted);
 
 			if ($this->data !== NULL) {
-				$this->data[$key] = $inserted;
+				$this->data[$key] = $doc;
 			}
 
-			return $this[$key];
+			return $doc;
 		}
 
 		return FALSE;
