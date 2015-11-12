@@ -11,12 +11,35 @@ namespace Mva\Dbm;
 class Helpers
 {
 
+	public static function contractArray(array $data, $delimiter = '.', $list = FALSE)
+	{
+		$return = [];
+
+		if (is_bool($delimiter)) {
+			list($list, $delimiter) = [$delimiter, '.'];
+		}
+
+		$getkey = function ($data, $prefix) use (&$getkey, &$return, $delimiter, $list) {
+			foreach ($data as $key => $row) {
+				if (!is_array($row) || empty($row) || (is_int(key($row)) && !$list)) {
+					$return[$prefix . $key] = $row;
+				} else {
+					$getkey($row, $prefix . $key . $delimiter);
+				}
+			}
+		};
+
+		$getkey($data, '');
+
+		return $return;
+	}
+
 	public static function expandArray(array $data, $delimiter = '.')
 	{
 		$return = [];
 
 		foreach ($data as $key => $val) {
-			self::expandRow($return, $key, $val);
+			self::expandRow($return, $key, $val, $delimiter);
 		}
 
 		return $return;
