@@ -6,15 +6,18 @@
  * @link       https://github.com/Vyki/mva-dbm
  */
 
-namespace Mva\Dbm\Driver\Mongo;
+namespace Mva\Dbm\Platform\Mongo;
 
-use DateTime,
-	Mva\Dbm\Helpers,
+use Mva\Dbm\Helpers,
 	IteratorAggregate,
+	Mva\Dbm\Driver\IDriver,
 	Mva\Dbm\Result\IResult;
 
 class MongoResult implements IteratorAggregate, IResult
 {
+
+	/** @var IDriver */
+	private $driver;
 
 	/** @var array|\Traversable */
 	private $result;
@@ -25,8 +28,9 @@ class MongoResult implements IteratorAggregate, IResult
 	/** @var array */
 	private $resultNormalized = [];
 
-	public function __construct($result)
+	public function __construct(IDriver $driver, $result)
 	{
+		$this->driver = $driver;
 		$this->result = $result;
 		$this->resultGenerator = $this->createResultGenerator();
 	}
@@ -75,17 +79,15 @@ class MongoResult implements IteratorAggregate, IResult
 	private function normalizeTree(array &$document, $level = 0)
 	{
 		if ($level === 0 && isset($document['_id']) && is_array($document['_id'])) {
-			$document = array_merge($document, $document['_id']);
+			$document = array_merge($document['_id'], $document);
 			unset($document['_id']);
 		}
 
 		foreach ($document as &$item) {
 			if (is_array($item)) {
 				$this->normalizeTree($item, ++$level);
-			} elseif ($item instanceof \MongoDate || $item instanceof \MongoTimestamp) {
-				$item = new DateTime('@' . (string) $item->sec);
-			} elseif ($item instanceof \MongoId) {
-				$item = (string) $item;
+			} elseif (is_object($item)) {
+				$item = $this->driver->convertToPhp($item);
 			}
 		}
 	}

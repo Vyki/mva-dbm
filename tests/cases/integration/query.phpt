@@ -1,36 +1,31 @@
 <?php
 
-namespace Dbm\Tests\Mongo;
+/**
+ * @testCase
+ * @dataProvider? ../../drivers.ini
+ */
 
-use Mva,
-	Tester\Assert,
-	Tester\TestCase,
+namespace Dbm\Tests\Driver\Mongo;
+
+use Tester\Assert,
 	Mva\Dbm\Query\IQuery,
-	Mva\Dbm\Driver\Mongo\MongoQuery,
-	Mva\Dbm\Driver\Mongo\MongoQueryBuilder;
+	Dbm\Tests\DriverTestCase,
+	Mva\Dbm\Platform\Mongo\MongoQueryBuilder;
 
 $connection = require __DIR__ . "/../../bootstrap.php";
 
-class MongoQueryTest extends TestCase
+class QueryTest extends DriverTestCase
 {
-
-	/** @var Mva\Dbm\Connection */
-	private $connection;
-
-	function __construct($connection)
-	{
-		$this->connection = $connection;
-	}
 
 	protected function setUp()
 	{
-		exec("mongoimport --db mva_test --drop --collection test_query < " . __DIR__ . "/../test.txt");
+		$this->loadData('test_query');
 	}
 
-	/** @return Mva\Dbm\Driver\Mongo\MongoQuery */
+	/** @return IQuery */
 	function getQuery()
 	{
-		$query = new MongoQuery($this->connection->driver);
+		$query = $this->getConnection()->getDriver()->getQuery();
 		return $query;
 	}
 
@@ -98,8 +93,8 @@ class MongoQueryTest extends TestCase
 		$result1 = $query->select('test_query', $builder->buildAggreregateQuery());
 
 		Assert::same([
-			['size_total' => 199, 'domain' => 'beta'],
-			['size_total' => 82, 'domain' => 'alpha']], $result1->fetchAll());
+			['domain' => 'beta', 'size_total' => 199],
+			['domain' => 'alpha', 'size_total' => 82]], $result1->fetchAll());
 
 		$builder->having('size_total > %i', 82);
 
@@ -109,7 +104,7 @@ class MongoQueryTest extends TestCase
 
 		$result2 = $query->select('test_query', $builder->buildAggreregateQuery());
 
-		Assert::same([['size_total' => 199, 'domain' => 'beta']], $result2->fetchAll());
+		Assert::same([['domain' => 'beta', 'size_total' => 199]], $result2->fetchAll());
 
 		Assert::same(['test_query', 'select - aggregate', 3, ['count' => count($result2)]], $log);
 	}
@@ -278,7 +273,7 @@ class MongoQueryTest extends TestCase
 
 }
 
-$test = new MongoQueryTest($connection);
+$test = new QueryTest();
 $test->run();
 
 

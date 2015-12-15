@@ -1,3 +1,3 @@
 #!/bin/bash
-
-php "../vendor/nette/tester/Tester/tester" cases -c php-unix.ini
+dir=$(cd `dirname $0` && pwd)
+php $dir/../vendor/nette/tester/Tester/tester $dir/cases -c $dir/php-unix.ini --setup $dir/inc/setup.php -s

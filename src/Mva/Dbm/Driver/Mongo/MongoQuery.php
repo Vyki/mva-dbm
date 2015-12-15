@@ -10,7 +10,9 @@ namespace Mva\Dbm\Driver\Mongo;
 
 use Mva,
 	Nette,
-	Mva\Dbm\Query\IQuery;
+	MongoCollection,
+	Mva\Dbm\Query\IQuery,
+	Mva\Dbm\Platform\Mongo\MongoQueryProcessor;
 
 class MongoQuery extends Nette\Object implements IQuery
 {
@@ -58,7 +60,7 @@ class MongoQuery extends Nette\Object implements IQuery
 
 		$select = $this->preprocessor->processSelect((array) $fields);
 
-		$result = $this->driver->getCollection($collection)->find($criteria, $select);
+		$result = $this->getCollection($collection)->find($criteria, $select);
 
 		if (isset($options[self::SELECT_LIMIT])) {
 			$result->limit($options[self::SELECT_LIMIT]);
@@ -79,7 +81,7 @@ class MongoQuery extends Nette\Object implements IQuery
 
 	public function selectCount($collection, array $criteria = [], array $options = [])
 	{
-		$result = $this->driver->getCollection($collection)->count($criteria, $options);
+		$result = $this->getCollection($collection)->count($criteria, $options);
 		$this->onQuery($collection, 'select - count', ['criteria' => $criteria, 'options' => $options], ['count' => $result]);
 
 		return $result;
@@ -95,7 +97,7 @@ class MongoQuery extends Nette\Object implements IQuery
 			}
 		}
 
-		$result = $this->driver->getCollection($collection)->aggregateCursor($pipelines);
+		$result = $this->getCollection($collection)->aggregateCursor($pipelines);
 		$this->onQuery($collection, 'select - aggregate', $pipelines, ['count' => iterator_count($result)]);
 
 		return $this->createResult($result);
@@ -103,7 +105,7 @@ class MongoQuery extends Nette\Object implements IQuery
 
 	public function selectDistinct($collection, $item, array $criteria = [])
 	{
-		$result = (array) $this->driver->getCollection($collection)->distinct($item, empty($criteria) ? NULL : $criteria);
+		$result = (array) $this->getCollection($collection)->distinct($item, empty($criteria) ? NULL : $criteria);
 
 		foreach ($result as $key => $row) {
 			$result[$key] = [$item => $row];
@@ -121,7 +123,7 @@ class MongoQuery extends Nette\Object implements IQuery
 		}
 
 		$criteria = $criteria = $this->preprocessor->processCondition($criteria);
-		$return = $this->driver->getCollection($collection)->remove($criteria, $options);
+		$return = $this->getCollection($collection)->remove($criteria, $options);
 		$this->onQuery($collection, 'delete', ['criteria' => $criteria, 'options' => $options], ['deleted' => $return['n']]);
 
 		return $return['n'];
@@ -130,7 +132,7 @@ class MongoQuery extends Nette\Object implements IQuery
 	public function insert($collection, array $data, $options = [])
 	{
 		$data = $this->preprocessor->processData($data, TRUE);
-		$this->driver->getCollection($collection)->insert($data, $options);
+		$this->getCollection($collection)->insert($data, $options);
 		$data = $this->createResult([$data])->fetch();
 		$this->onQuery($collection, 'insert', ['data' => $data, 'options' => $options], ['inserted' => 1]);
 
@@ -143,7 +145,7 @@ class MongoQuery extends Nette\Object implements IQuery
 		$options = $this->processUpdateOptions($options, $multi);
 		$criteria = $this->preprocessor->processCondition($criteria);
 
-		$result = $this->driver->getCollection($collection)->update($criteria, $data, $options);
+		$result = $this->getCollection($collection)->update($criteria, $data, $options);
 		list($op, $chname, $data) = $this->processUpdateResult($result, $data);
 		$this->onQuery($collection, $op, ['data' => $data, 'criteria' => $criteria, 'options' => $options], [$chname => $result['n']]);
 
@@ -161,6 +163,12 @@ class MongoQuery extends Nette\Object implements IQuery
 	protected function createResult($data)
 	{
 		return $this->driver->resultFactory->create($data);
+	}
+
+	/** @return MongoCollection */
+	protected function getCollection($name)
+	{
+		return $this->driver->resource->selectCollection($name);
 	}
 
 	private function processUpdateOptions($upsert, $multi)

@@ -4,19 +4,17 @@ php:
     - 5.6
     - 7.0
     - hhvm
-    - hhvm-nightly
 
 matrix:
   allow_failures:
     - php: 7.0
     - php: hhvm
-    - php: hhvm-nightly
 
 before_install:
     - composer self-update
 
 script:
-    - vendor/bin/tester tests -s -p php -c tests/php-unix.ini
+    - vendor/bin/tester tests -s -p php -c tests/php-unix.ini --setup tests/inc/setup.php -s
 
 after_failure:
     # Print *.actual content
@@ -30,4 +28,5 @@ before_script:
     - sleep 10
     - mongo --version
     - printf "\n" | pecl install -f mongo-1.6.0
+    - echo "extension = mongo.so" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
     - composer install --no-interaction --dev --prefer-source

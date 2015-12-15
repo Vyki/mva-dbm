@@ -11,15 +11,23 @@ namespace Mva\Dbm\Driver;
 interface IDriver
 {
 
+	const TYPE_OID = 'oid';
+	const TYPE_BINARY = 'bin';
+	const TYPE_REGEXP = 're';
+	const TYPE_TIMESTAMP = 'ts';
+	const TYPE_DATETIME = 'dt';
+
 	function connect(array $config);
 
 	function disconnect();
 
-	function getDatabase();
+	function getResource();
 
-	function getCollection($name);
+	function getQuery();
 
 	function getQueryBuilder();
 
-	function getQuery();
+	function convertToPhp($item);
+
+	function convertToDriver($value, $type);
 }

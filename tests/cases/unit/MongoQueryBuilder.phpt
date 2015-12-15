@@ -1,9 +1,9 @@
 <?php
 
-namespace Dbm\Tests\Mongo;
+namespace Dbm\Tests;
 
 use Tester\Assert,
-	Mva\Dbm\Driver,
+	Mva\Dbm\Platform,
 	Tester\TestCase;
 
 $database = require __DIR__ . "/../../bootstrap.php";
@@ -13,7 +13,7 @@ class MongoQueryBuilderTest extends TestCase
 
 	private function getBuilder()
 	{
-		return new Driver\Mongo\MongoQueryBuilder('grid');
+		return new Platform\Mongo\MongoQueryBuilder('grid');
 	}
 
 	public function testFrom()
@@ -113,8 +113,8 @@ class MongoQueryBuilderTest extends TestCase
 	{
 		$builder = $this->getBuilder();
 
-		$builder->addSelect('MAX(domain) AS domain_max');
-		Assert::same(['$max' => '$domain'], $builder->aggregate['domain_max']);
+		$builder->addSelect('MAX(a.domain) AS domain_max');
+		Assert::same(['$max' => '$a.domain'], $builder->aggregate['domain_max']);
 
 		$builder->addSelect('MIN(delta)');
 		Assert::same(['$min' => '$delta'], $builder->aggregate['_delta_min']);
@@ -165,8 +165,7 @@ class MongoQueryBuilderTest extends TestCase
 				'limit' => 2,
 				'skip' => 1,
 				'sort' => array('oid' => 1, 'domain' => -1),
-			],
-		], $builder->buildSelectQuery());
+			]], $builder->buildSelectQuery());
 	}
 
 	public function testBuildAggregateQuery()
@@ -192,8 +191,7 @@ class MongoQueryBuilderTest extends TestCase
 			['$sort' => ['oid' => 1, 'domain' => -1]],
 			['$match' => [['size_total > %i' => 82]]],
 			['$skip' => 1],
-			['$limit' => 2]
-		], $builder->buildAggreregateQuery());
+			['$limit' => 2]], $builder->buildAggreregateQuery());
 	}
 
 }

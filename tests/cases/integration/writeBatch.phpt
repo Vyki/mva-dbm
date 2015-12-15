@@ -1,33 +1,28 @@
 <?php
 
-namespace Dbm\Tests\Mongo;
+/**
+ * @testCase
+ * @dataProvider? ../../drivers.ini
+ */
 
-use Mva,
-	Tester\Assert,
-	Tester\TestCase,
-	Mva\Dbm\Driver\Mongo\MongoWriteBatch;
+namespace Dbm\Tests\Driver\Mongo;
+
+use Tester\Assert,
+	Dbm\Tests\DriverTestCase;
 
 $connection = include __DIR__ . "/../../bootstrap.php";
 
-class MongoWriteBatchTest extends TestCase
+class WriteBatchTest extends DriverTestCase
 {
-
-	/** @var Mva\Dbm\Connection */
-	private $connection;
-
-	function __construct($connection)
-	{
-		$this->connection = $connection;
-	}
 
 	protected function setUp()
 	{
-		exec("mongoimport --db mva_test --drop --collection test_batch < " . __DIR__ . "/../test.txt");
+		$this->loadData('test_batch');
 	}
 
 	public function getBatch()
 	{
-		return new MongoWriteBatch($this->connection->driver, 'test_batch');
+		return $this->getConnection()->getQuery()->batch('test_batch');
 	}
 
 	public function testInsert()
@@ -113,7 +108,7 @@ class MongoWriteBatchTest extends TestCase
 	{
 		$log = [];
 
-		$this->connection->query->onQuery[] = function ($coll, $oper, $param, $res) use (&$log) {
+		$this->getConnection()->getQuery()->onQuery[] = function ($coll, $oper, $param, $res) use (&$log) {
 			$log[] = [$coll, $oper, $param, $res];
 		};
 
@@ -211,5 +206,5 @@ class MongoWriteBatchTest extends TestCase
 
 }
 
-$test = new MongoWriteBatchTest($connection);
+$test = new WriteBatchTest();
 $test->run();

@@ -6,10 +6,11 @@
  * @link       https://github.com/Vyki/mva-dbm
  */
 
-namespace Mva\Dbm\Driver\Mongo;
+namespace Mva\Dbm\Platform\Mongo;
 
 use Nette,
 	Mva\Dbm\Helpers,
+	Mva\Dbm\Driver\IDriver,
 	Mva\Dbm\InvalidArgumentException;
 
 /**
@@ -20,6 +21,9 @@ class MongoQueryProcessor extends Nette\Object
 {
 
 	private $cmd = '$';
+
+	/** @var IDriver */
+	private $driver;
 
 	/** @var array of SQL like operators and mongo equivalents */
 	private $operators = [
@@ -35,8 +39,9 @@ class MongoQueryProcessor extends Nette\Object
 		'not_in' => 'nin'
 	];
 
-	public function __construct()
+	public function __construct(IDriver $driver)
 	{
+		$this->driver = $driver;
 		$this->cmd = ini_get('mongo.cmd') ? : $this->cmd;
 	}
 
@@ -306,7 +311,7 @@ class MongoQueryProcessor extends Nette\Object
 						}
 						break;
 					case 're':
-						return new \MongoRegex($value);
+						return $this->driver->convertToDriver($value, IDriver::TYPE_REGEXP);
 				}
 			case 'integer':
 			case 'double':
@@ -320,13 +325,13 @@ class MongoQueryProcessor extends Nette\Object
 					case 'f':
 						return (float) $value;
 					case 'dt':
-						return new \MongoDate(is_numeric($value) ? (int) $value : strtotime((string) $value));
+						return $this->driver->convertToDriver(is_numeric($value) ? (int) $value : strtotime((string) $value), IDriver::TYPE_DATETIME);
 					case 'ts':
-						return new \MongoTimestamp(is_numeric($value) ? (int) $value : strtotime((string) $value));
+						return $this->driver->convertToDriver(is_numeric($value) ? (int) $value : strtotime((string) $value), IDriver::TYPE_TIMESTAMP);
 					case 'b':
 						return (bool) $value;
 					case 'oid':
-						return new \MongoId((string) $value);
+						return $this->driver->convertToDriver((string) $value, IDriver::TYPE_OID);
 				}
 				break;
 
@@ -334,12 +339,12 @@ class MongoQueryProcessor extends Nette\Object
 				return NULL;
 
 			case 'object':
-				if ($value instanceof \DateTimeImmutable || $value instanceof \DateTime) {
+				if ($value instanceof \DateTimeInterface) {
 					switch ($type) {
 						case 'dt':
-							return new \MongoDate($value->format('U'));
+							return $this->driver->convertToDriver((int) $value->format('U'), IDriver::TYPE_DATETIME);
 						case 'ts':
-							return new \MongoTimestamp($value->format('U'));
+							return $this->driver->convertToDriver((int) $value->format('U'), IDriver::TYPE_TIMESTAMP);
 						case 'any':
 						case 's':
 							return $value->format('Y-m-d H:i:s');
@@ -348,11 +353,13 @@ class MongoQueryProcessor extends Nette\Object
 						case 'f':
 							return (float) $value->format('U');
 					}
-				} elseif ($value instanceof \MongoId && $type === 'oid') {
-					return $value;
-				} elseif ($value instanceof \MongoRegex && $type === 're') {
-					return $value;
-				} elseif (method_exists($value, '__toString')) {
+				}
+
+				if (($return = $this->driver->convertToDriver($value, $type)) !== $value) {
+					return $return;
+				}
+
+				if (method_exists($value, '__toString')) {
 					$str_value = (string) $value;
 					switch ($type) {
 						case 'any':

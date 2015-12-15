@@ -1,34 +1,31 @@
 <?php
 
+/**
+ * @testCase
+ * @dataProvider? ../../drivers.ini
+ */
+
 namespace Dbm\Tests\Collection;
 
 use Mva,
 	Tester\Assert,
-	Tester\TestCase,
-	Mva\Dbm\Collection\Document,
-	Mva\Dbm\Collection\Selection;
+	Dbm\Tests\DriverTestCase,
+	Mva\Dbm\Collection\Document;
 
 $connection = require __DIR__ . "/../../bootstrap.php";
 
-class SelectionBasicsTest extends TestCase
+class SelectionBasicsTest extends DriverTestCase
 {
-
-	private $connection;
-
-	function __construct($connection)
-	{
-		$this->connection = $connection;
-	}
 
 	protected function setUp()
 	{
-		exec("mongoimport --db mva_test --drop --collection test_find < " . __DIR__ . "/../test.txt");
+		$this->loadData('test_find');
 	}
 
 	/** @return Mva\Mongo\Selection */
 	function getSelection()
 	{
-		return new Selection($this->connection, 'test_find');
+		return $this->getConnection()->getSelection('test_find');
 	}
 
 	function testWherePrimary_SetPrimary()
@@ -254,7 +251,7 @@ class SelectionBasicsTest extends TestCase
 
 }
 
-$test = new SelectionBasicsTest($connection);
+$test = new SelectionBasicsTest();
 $test->run();
 
 

@@ -6,7 +6,7 @@
  * @link       https://github.com/Vyki/mva-dbm
  */
 
-namespace Mva\Dbm\Driver\Mongo;
+namespace Mva\Dbm\Platform\Mongo;
 
 use Nette,
 	Mva\Dbm\Query\IQuery,
@@ -142,7 +142,7 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 				continue;
 			}
 
-			if (preg_match('#^(\w+(?:\.\w+)*)\s+(ASC|DESC)$#i', $item, $part)) {
+			if (preg_match('#^(.*)\s+(ASC|DESC)$#i', $item, $part)) {
 				$this->order[$part[1]] = $part[2] === 'ASC' ? 1 : -1;
 			}
 		}
@@ -176,7 +176,7 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 				continue;
 			}
 
-			if (is_string($item) && preg_match('#^(\w+)\(([\w_]+|\*)\)(?:\s+AS\s+([\w_]+))?$#i', $item, $part)) {
+			if (is_string($item) && preg_match('#^(\w+)\((.*)\)(?:\s+AS\s+([\w_\.]+))?$#', $item, $part)) {
 				$this->addAggregate($part[1], $part[2], isset($part[3]) ? $part[3] : NULL);
 				continue;
 			}

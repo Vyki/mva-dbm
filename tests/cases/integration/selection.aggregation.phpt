@@ -1,34 +1,31 @@
 <?php
 
+/**
+ * @testCase
+ * @dataProvider? ../../drivers.ini
+ */
+
 namespace Dbm\Tests\Collection;
 
 use Mva,
 	Tester\Assert,
-	Tester\TestCase,
-	Mva\Dbm\Collection\Document,
-	Mva\Dbm\Collection\Selection;
+	Dbm\Tests\DriverTestCase,
+	Mva\Dbm\Collection\Document;
 
 $connection = require __DIR__ . "/../../bootstrap.php";
 
-class SelectionAggregationTest extends TestCase
+class SelectionAggregationTest extends DriverTestCase
 {
-
-	private $connection;
-
-	function __construct($connection)
-	{
-		$this->connection = $connection;
-	}
 
 	protected function setUp()
 	{
-		exec("mongoimport --db mva_test --drop --collection test_agr < " . __DIR__ . "/../test.txt");
+		$this->loadData('test_agr');
 	}
 
 	/** @return Mva\Mongo\Selection */
 	function getSelection()
 	{
-		return new Selection($this->connection, 'test_agr');
+		return $this->getConnection()->getSelection('test_agr');
 	}
 
 	function testCount()
@@ -100,7 +97,7 @@ class SelectionAggregationTest extends TestCase
 
 }
 
-$test = new SelectionAggregationTest($connection);
+$test = new SelectionAggregationTest();
 $test->run();
 
 

@@ -6,25 +6,25 @@
  * @link       https://github.com/Vyki/mva-dbm
  */
 
-namespace Mva\Dbm\Driver\Mongo;
+namespace Mva\Dbm\Platform\Mongo;
 
 use Mva\Dbm\Driver\IDriver,
 	Mva\Dbm\Result\IResultFactory;
 
-class MongoResultfactory implements IResultFactory
+class MongoResultFactory implements IResultFactory
 {
 
 	/** @var IDriver */
 	private $driver;
 
-	public function create($data)
-	{
-		return new MongoResult($data);
-	}
-
-	public function setDriver(IDriver $driver)
+	public function __construct(IDriver $driver)
 	{
 		$this->driver = $driver;
+	}
+
+	public function create($data)
+	{
+		return new MongoResult($this->driver, $data);
 	}
 
 }

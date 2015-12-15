@@ -1,40 +1,46 @@
 <?php
 
-namespace Dbm\Tests\Mongo;
+namespace Dbm\Tests;
 
-use Tester\Assert,
-	Tester\TestCase,
-	Mva\Dbm\Driver;
+use Mockery,
+	Tester\Assert,
+	Mva\Dbm\Driver\IDriver,
+	Dbm\Tests\UnitTestCase,
+	Mva\Dbm\Platform\Mongo\MongoQueryProcessor;
 
-$database = require __DIR__ . "/../../bootstrap.php";
+require __DIR__ . "/../../bootstrap.php";
 
-class MongoProcessor_ConditionsTest extends TestCase
+class MongoProcessorProcessTest extends UnitTestCase
 {
 
-	/** @return Driver\Mongo\MongoQueryProcessor */
-	function getProcessor()
+	/** @var IDriver */
+	private $driver;
+
+	/** @var MongoQueryProcessor */
+	private $preprocessor;
+
+	function setUp()
 	{
-		return new Driver\Mongo\MongoQueryProcessor();
+		parent::setUp();
+
+		$this->driver = Mockery::mock(IDriver::class);
+		$this->preprocessor = new MongoQueryProcessor($this->driver);
 	}
 
 	function testProcessSelect()
 	{
-		$pc = $this->getProcessor();
-
 		$select1 = ['name' => TRUE, 'domain' => FALSE, '!item.subitem' => TRUE];
 
-		Assert::same($select1, $pc->processSelect($select1));
+		Assert::same($select1, $this->preprocessor->processSelect($select1));
 
 		$select2 = ['name', '!domain', '!!item.subitem'];
 
-		Assert::same($select1, $pc->processSelect($select2));
+		Assert::same($select1, $this->preprocessor->processSelect($select2));
 	}
 
 	function testProcessData()
 	{
-		$pc = $this->getProcessor();
-
-		$actual = $pc->processData([
+		$actual = $this->preprocessor->processData([
 			'type%s' => 'vehicle',
 			'width%i' => '27',
 			'height%f' => '34.4',
@@ -58,17 +64,16 @@ class MongoProcessor_ConditionsTest extends TestCase
 
 		Assert::same($expected, $actual);
 
-		$expdate = $pc->processData(['date' => new \DateTime('2000-01-01 01:02:03')]);
-
-		Assert::true($expdate['date'] instanceof \MongoDate);
-		Assert::same($expdate['date']->sec, 946684923);
+		$return = (object) ['sec' => 946684923];
+		$this->driver->shouldReceive('convertToDriver')->once()->with(946684923, 'dt')->andReturn($return);
+		$expdate = $this->preprocessor->processData(['date' => new \DateTime('2000-01-01 01:02:03')]);
+		
+		Assert::same($return, $expdate['date']);
 	}
 
 	function processDataRecursive()
 	{
-		$pc = $this->getProcessor();
-
-		$actual = $pc->processData([
+		$actual = $this->preprocessor->processData([
 			'width%i' => '27',
 			'height%f' => '34.4',
 			'samples' => [
@@ -91,9 +96,7 @@ class MongoProcessor_ConditionsTest extends TestCase
 
 	function testProcessDataExpandRow()
 	{
-		$pc = $this->getProcessor();
-
-		$actual = $pc->processData([
+		$actual = $this->preprocessor->processData([
 			'name' => 'Roman',
 			'coords.x%i' => '12',
 			'coords.y' => 15,
@@ -111,8 +114,6 @@ class MongoProcessor_ConditionsTest extends TestCase
 
 	function testProcessUpdate()
 	{
-		$pc = $this->getProcessor();
-
 		$data = [
 			'size%f' => 40,
 			'$set' => ['name' => 'test update', 'rank%i' => '13.21'],
@@ -144,61 +145,57 @@ class MongoProcessor_ConditionsTest extends TestCase
 			]
 		];
 
-		Assert::same($expected, $pc->processUpdate($data));
+		Assert::same($expected, $this->preprocessor->processUpdate($data));
 	}
 
 	function testProcessCondition_operators()
 	{
-		$pc = $this->getProcessor();
-
 		$testArray1 = ['bus', 2, 'branch'];
 		$testArray2 = array_combine($testArray1, $testArray1);
 
 		//where test
 		$cond1 = ['domain' => 'branch'];
-		Assert::same(['domain' => 'branch'], $pc->processCondition($cond1));
+		Assert::same(['domain' => 'branch'], $this->preprocessor->processCondition($cond1));
 
 		$cond2 = ['domain = %s' => 'branch'];
-		Assert::same(['domain' => 'branch'], $pc->processCondition($cond2));
+		Assert::same(['domain' => 'branch'], $this->preprocessor->processCondition($cond2));
 
 		$cond3 = ['domain = bus'];
-		Assert::same(['domain' => 'bus'], $pc->processCondition($cond3));
+		Assert::same(['domain' => 'bus'], $this->preprocessor->processCondition($cond3));
 
 		$cond4 = ['domain <> %s' => 'branch'];
-		Assert::same(['domain' => ['$ne' => 'branch']], $pc->processCondition($cond4));
+		Assert::same(['domain' => ['$ne' => 'branch']], $this->preprocessor->processCondition($cond4));
 
 		$cond5 = ['index.tx >= 5'];
-		Assert::same(['index.tx' => ['$gte' => '5']], $pc->processCondition($cond5));
+		Assert::same(['index.tx' => ['$gte' => '5']], $this->preprocessor->processCondition($cond5));
 
 		$cond6 = ['index.tx.ax < %i' => '2'];
-		Assert::same(['index.tx.ax' => ['$lt' => 2]], $pc->processCondition($cond6));
+		Assert::same(['index.tx.ax' => ['$lt' => 2]], $this->preprocessor->processCondition($cond6));
 
 		$cond7 = ['domain' => $testArray2];
-		Assert::same(['domain' => ['$in' => $testArray1]], $pc->processCondition($cond7));
+		Assert::same(['domain' => ['$in' => $testArray1]], $this->preprocessor->processCondition($cond7));
 
 		$cond8 = ['domain IN' => $testArray2];
-		Assert::same(['domain' => ['$in' => $testArray1]], $pc->processCondition($cond8));
+		Assert::same(['domain' => ['$in' => $testArray1]], $this->preprocessor->processCondition($cond8));
 
 		$cond9 = ['domain NOT_IN' => $testArray2];
-		Assert::same(['domain' => ['$nin' => $testArray1]], $pc->processCondition($cond9));
+		Assert::same(['domain' => ['$nin' => $testArray1]], $this->preprocessor->processCondition($cond9));
 
 		$cond10 = ['domain EXISTS' => TRUE];
-		Assert::same(['domain' => ['$exists' => TRUE]], $pc->processCondition($cond10));
+		Assert::same(['domain' => ['$exists' => TRUE]], $this->preprocessor->processCondition($cond10));
 
 		$cond11 = ['domain' => ['$exists' => TRUE]];
-		Assert::same(['domain' => ['$exists' => TRUE]], $pc->processCondition($cond11));
+		Assert::same(['domain' => ['$exists' => TRUE]], $this->preprocessor->processCondition($cond11));
 
 		$cond12 = ['index $lt %i' => '2'];
-		Assert::same(['index' => ['$lt' => 2]], $pc->processCondition($cond12));
+		Assert::same(['index' => ['$lt' => 2]], $this->preprocessor->processCondition($cond12));
 
 		$cond13 = ['domain $in' => $testArray2];
-		Assert::same(['domain' => ['$in' => $testArray1]], $pc->processCondition($cond13));
+		Assert::same(['domain' => ['$in' => $testArray1]], $this->preprocessor->processCondition($cond13));
 	}
 
 	function testProcessCondition_or()
 	{
-		$pc = $this->getProcessor();
-
 		$cond = ['$or' => ['size > 10', 'score < %i' => 20, 'domain EXISTS' => TRUE]];
 
 		Assert::same([
@@ -206,13 +203,11 @@ class MongoProcessor_ConditionsTest extends TestCase
 				['size' => ['$gt' => '10']],
 				['score' => ['$lt' => 20]],
 				['domain' => ['$exists' => TRUE]]
-			]], $pc->processCondition($cond));
+			]], $this->preprocessor->processCondition($cond));
 	}
 
 	function testProcessCondition_elemMatch()
 	{
-		$pc = $this->getProcessor();
-
 		$results = [
 			'results' => [
 				'$elemMatch' => [
@@ -224,7 +219,7 @@ class MongoProcessor_ConditionsTest extends TestCase
 
 		$cond1 = ['results ELEM_MATCH' => ['size' => 10, 'score < %i' => '20', 'width > 10']];
 
-		Assert::same($results, $pc->processCondition($cond1));
+		Assert::same($results, $this->preprocessor->processCondition($cond1));
 
 		$cond2 = [
 			'results' => [
@@ -236,36 +231,32 @@ class MongoProcessor_ConditionsTest extends TestCase
 			]
 		];
 
-		Assert::same($results, $pc->processCondition($cond2));
+		Assert::same($results, $this->preprocessor->processCondition($cond2));
 	}
 
 	function testProcessCondition_like()
 	{
-		$pc = $this->getProcessor();
-
+		$this->driver->shouldReceive('convertToDriver')->once()->with('/test$/i', 're')->andReturn('regexpA');
 		$cond1 = ['domain LIKE' => '%test'];
-		$regx1 = $pc->processCondition($cond1);
+		$regx1 = $this->preprocessor->processCondition($cond1);
 
-		Assert::true($regx1['domain'] instanceof \MongoRegex);
-		Assert::same($regx1['domain']->regex, 'test$');
+		Assert::same($regx1['domain'], 'regexpA');
 
+		$this->driver->shouldReceive('convertToDriver')->once()->with('/^test/i', 're')->andReturn('regexpB');
 		$cond2 = ['domain LIKE' => 'test%'];
-		$regx2 = $pc->processCondition($cond2);
+		$regx2 = $this->preprocessor->processCondition($cond2);
 
-		Assert::true($regx2['domain'] instanceof \MongoRegex);
-		Assert::same($regx2['domain']->regex, '^test');
+		Assert::same($regx2['domain'], 'regexpB');
 
+		$this->driver->shouldReceive('convertToDriver')->once()->with('/test/i', 're')->andReturn('regexpC');
 		$cond3 = ['domain LIKE' => '%test%'];
-		$regx3 = $pc->processCondition($cond3);
+		$regx3 = $this->preprocessor->processCondition($cond3);
 
-		Assert::true($regx3['domain'] instanceof \MongoRegex);
-		Assert::same($regx3['domain']->regex, 'test');
+		Assert::same($regx3['domain'], 'regexpC');
 	}
 
 	function testProcessCondition_structure()
 	{
-		$pc = $this->getProcessor();
-
 		$conds1 = [['domain = bus', 'size > %i' => '45'], ['pr_id IN %i[]' => [1, 2]]];
 
 		$conds2 = ['domain = bus', 'size > %i' => '45', 'pr_id IN' => [1, 2]];
@@ -276,34 +267,32 @@ class MongoProcessor_ConditionsTest extends TestCase
 				['pr_id' => ['$in' => [1, 2]]]
 		]];
 
-		Assert::same($expected, $pc->processCondition($conds1));
-		Assert::same($expected, $pc->processCondition($conds2));
+		Assert::same($expected, $this->preprocessor->processCondition($conds1));
+		Assert::same($expected, $this->preprocessor->processCondition($conds2));
 
 		$conds3 = ['domain' => 'bus'];
 		$conds4 = [['domain' => 'bus']];
 
-		Assert::same($conds3, $pc->processCondition($conds3));
-		Assert::same($conds3, $pc->processCondition($conds4));
+		Assert::same($conds3, $this->preprocessor->processCondition($conds3));
+		Assert::same($conds3, $this->preprocessor->processCondition($conds4));
 	}
 
 	function testIncompleteCondition()
 	{
-		$pc = $this->getProcessor();
-
 		$cond1 = ['domain = %s'];
 
-		Assert::exception(function() use ($pc, $cond1) {
-			$pc->processCondition($cond1);
+		Assert::exception(function() use ($cond1) {
+			$this->preprocessor->processCondition($cond1);
 		}, 'Mva\Dbm\InvalidArgumentException');
 
 		$cond2 = ['domain'];
 
-		Assert::exception(function() use ($pc, $cond2) {
-			$pc->processCondition($cond2);
+		Assert::exception(function() use ($cond2) {
+			$this->preprocessor->processCondition($cond2);
 		}, 'Mva\Dbm\InvalidArgumentException');
 	}
 
 }
 
-$test = new MongoProcessor_ConditionsTest();
+$test = new MongoProcessorProcessTest();
 $test->run();

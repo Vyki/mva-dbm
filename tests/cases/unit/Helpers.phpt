@@ -3,12 +3,12 @@
 namespace Dbm\Mongo;
 
 use Tester\Assert,
-	Tester\TestCase,
-	Mva\Dbm\Helpers;
+	Mva\Dbm\Helpers,
+	Dbm\Tests\UnitTestCase;
 
-require __DIR__ . "/../bootstrap.php";
+require __DIR__ . "/../../bootstrap.php";
 
-class HelpersTest extends TestCase
+class HelpersTest extends UnitTestCase
 {
 
 	function testContract()
