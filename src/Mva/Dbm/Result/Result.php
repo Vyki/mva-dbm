@@ -6,14 +6,14 @@
  * @link       https://github.com/Vyki/mva-dbm
  */
 
-namespace Mva\Dbm\Platform\Mongo;
+namespace Mva\Dbm\Result;
 
 use Mva\Dbm\Helpers,
 	IteratorAggregate,
 	Mva\Dbm\Driver\IDriver,
 	Mva\Dbm\Result\IResult;
 
-class MongoResult implements IteratorAggregate, IResult
+class Result implements IteratorAggregate, IResult
 {
 
 	/** @var IDriver */
@@ -23,10 +23,7 @@ class MongoResult implements IteratorAggregate, IResult
 	private $result;
 
 	/** @var \Generator */
-	private $resultGenerator = NULL;
-
-	/** @var array */
-	private $resultNormalized = [];
+	private $resultGenerator;
 
 	public function __construct(IDriver $driver, $result)
 	{
@@ -35,7 +32,7 @@ class MongoResult implements IteratorAggregate, IResult
 		$this->resultGenerator = $this->createResultGenerator();
 	}
 
-	public function getResult()
+	public function getRawResult()
 	{
 		return $this->result;
 	}
@@ -68,22 +65,22 @@ class MongoResult implements IteratorAggregate, IResult
 		return Helpers::fetchPairs($this, $key, $value);
 	}
 
-	public function normalizeDocument($document)
+	public function normalizeDocument($data)
 	{
-		$this->normalizeTree($document);
-		return $document;
+		$this->normalizeTree($data);
+		return $data;
 	}
 
-	##################  internal normalization ##################
+	################## internal normalization ##################
 
-	private function normalizeTree(array &$document, $level = 0)
+	private function normalizeTree(array &$data, $level = 0)
 	{
-		if ($level === 0 && isset($document['_id']) && is_array($document['_id'])) {
-			$document = array_merge($document['_id'], $document);
-			unset($document['_id']);
+		if ($level === 0 && isset($data['_id']) && is_array($data['_id'])) {
+			$data = array_merge($data['_id'], $data);
+			unset($data['_id']);
 		}
 
-		foreach ($document as &$item) {
+		foreach ($data as &$item) {
 			if (is_array($item)) {
 				$this->normalizeTree($item, ++$level);
 			} elseif (is_object($item)) {
@@ -94,6 +91,9 @@ class MongoResult implements IteratorAggregate, IResult
 
 	##################  interface Iterator ##################
 
+	/**
+	 * @return \Generator	 
+	 */
 	public function getIterator()
 	{
 		return $this->createResultGenerator();
@@ -101,16 +101,13 @@ class MongoResult implements IteratorAggregate, IResult
 
 	##################  result generator  ##################
 
+	/**
+	 * @return \Generator	 
+	 */
 	private function createResultGenerator()
 	{
-		foreach ($this->result as $key => $document) {
-
-			if (!array_key_exists($key, $this->resultNormalized)) {
-				$this->normalizeTree($document);
-				$this->resultNormalized[$key] = $document;
-			}
-
-			yield $key => $this->resultNormalized[$key];
+		foreach ($this->result as $data) {
+			yield $this->normalizeDocument($data);
 		}
 	}
 

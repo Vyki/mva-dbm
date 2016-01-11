@@ -8,44 +8,27 @@
 
 namespace Mva\Dbm\Driver\Mongo;
 
-use Nette,
-	MongoDB,
+use MongoDB,
 	MongoClient,
-	Mva\Dbm\Driver\IDriver,
-	Mva\Dbm\Result\IResultFactory,
-	Mva\Dbm\Platform\Mongo\MongoQueryBuilder,
-	Mva\Dbm\Platform\Mongo\MongoResultFactory,
-	Mva\Dbm\Platform\Mongo\MongoQueryProcessor;
+	Mva\Dbm\Driver\IDriver;
 
-/**
- * @property-read MongoDB $resource
- * @property-read MongoQuery $query
- * @property-read Builder $queryBuilder
- * @property-read MongoQueryProcessor $preprocessor
- */
-class MongoDriver extends Nette\Object implements IDriver
+class MongoDriver implements IDriver
 {
 
-	/** @var MongoClient */
-	private $connection;
+	/** @var string */
+	private $dbname;
 
 	/** @var MongoDB */
 	private $database;
 
-	/** @var MongoQueryProcessor */
-	private $preprocessor;
+	/** @var MongoClient */
+	private $connection;
+	
+	/** @var MongoWriteBatch */
+	private $writeBatch;
 
-	/** @var IResultFactory */
-	private $resultFactory;
-
-	/** @var MongoQuery */
-	private $query;
-
-	public function __construct()
-	{
-		$this->preprocessor = new MongoQueryProcessor($this);
-		$this->query = new MongoQuery($this);
-	}
+	/** @var MongoQueryAdapter */
+	private $queryAdapter;
 
 	public function connect(array $config)
 	{
@@ -60,10 +43,7 @@ class MongoDriver extends Nette\Object implements IDriver
 			$this->connection = new MongoClient($dsn);
 		}
 
-		if (isset($config['resultFactory']) && $config['resultFactory'] instanceof IResultFactory) {
-			$this->resultFactory = $config['resultFactory'];
-		}
-
+		$this->dbname = $config['database'];
 		$this->database = $this->connection->selectDB($config['database']);
 	}
 
@@ -72,38 +52,40 @@ class MongoDriver extends Nette\Object implements IDriver
 		$this->connection->close();
 	}
 
+	/** @return MongoDB */
 	public function getResource()
 	{
 		return $this->database;
 	}
 
-	public function getQueryBuilder()
+	/** @return MongoQueryAdapter */
+	public function getQueryAdapter()
 	{
-		return new MongoQueryBuilder();
-	}
-
-	public function getQuery()
-	{
-		return $this->query;
-	}
-
-	public function getResultFactory()
-	{
-		if (!$this->resultFactory) {
-			$this->resultFactory = new MongoResultFactory($this);
+		if (!$this->queryAdapter) {
+			$this->queryAdapter = new MongoQueryAdapter($this);
 		}
 
-		return $this->resultFactory;
+		return $this->queryAdapter;
 	}
 
-	public function getPreprocessor()
+	public function getDatabaseName()
 	{
-		return $this->preprocessor;
+		return $this->dbname;
+	}
+
+	/** @return MongodbWriteBatch */
+	public function getWriteBatch()
+	{
+		if (!$this->writeBatch) {
+			$this->writeBatch = new MongoWriteBatch($this);
+		}
+
+		return $this->writeBatch;
 	}
 
 	public function convertToPhp($item)
 	{
-		if ($item instanceof \MongoDate || $item instanceof \MongoTimestamp) {
+		if ($item instanceof \MongoDate) {
 			return new \DateTime('@' . (string) $item->sec);
 		}
 		if ($item instanceof \MongoId) {
@@ -125,11 +107,6 @@ class MongoDriver extends Nette\Object implements IDriver
 		if ($type === IDriver::TYPE_DATETIME) {
 			$value = $value instanceof \DateTimeInterface ? $value->format('U') : $value;
 			return new \MongoDate((string) $value);
-		}
-
-		if ($type === IDriver::TYPE_TIMESTAMP) {
-			$value = $value instanceof \DateTimeInterface ? $value->format('U') : $value;
-			return new \MongoTimestamp((string) $value);
 		}
 
 		if ($type === IDriver::TYPE_BINARY) {

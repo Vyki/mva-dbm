@@ -8,57 +8,95 @@
 
 namespace Mva\Dbm\Driver\Mongo;
 
-use Mva\Dbm\Platform\Mongo\MongoBulkWrite;
+use Mva\Dbm\Query\IWriteBatch,
+	Mva\Dbm\Query\QueryWriteBatch as Batch,
+	Mva\Dbm\Result\ResultWriteBatch as Result;
 
-class MongoWriteBatch extends MongoBulkWrite
+class MongoWriteBatch implements IWriteBatch
 {
 
-	public function execute()
-	{
-		$return = [];
+	const UPDATE = 'u';
+	const CRITERIA = 'q';
+	const DATA = 'data';
 
-		foreach (['insert', 'update', 'delete'] as $op) {
-			if (empty($this->queue[$op])) {
+	/** @var MongoDriver */
+	protected $driver;
+
+	public function __construct(MongoDriver $driver)
+	{
+		$this->driver = $driver;
+	}
+
+	public function write($collection, Batch $batch)
+	{
+		$results = $upserted = $inserted = $errors = [];
+
+		foreach ([Batch::INSERT, Batch::UPDATE, Batch::DELETE] as $op) {
+			$queue = $batch->getQueue($op);
+
+			if (empty($queue)) {
 				continue;
 			}
 
 			$class = "\\Mongo{$op}Batch";
 
-			$batch = new $class($this->driver->resource->selectCollection($this->collection));
+			$writer = new $class($this->driver->getResource()->selectCollection($collection));
 
-			foreach ($this->queue[$op] as $item) {
-				$batch->add($item);
+			foreach ($queue as $item) {
+				if ($op === Batch::INSERT) {
+					!isset($item['_id']) && $item['_id'] = new \MongoId();
+					$inserted[] = $item['_id'];
+					$writer->add($item);
+				}
+
+				if ($op === Batch::UPDATE) {
+					$writer->add([
+						self::CRITERIA => $item[0],
+						self::UPDATE => $item[1],
+						Batch::UPSERT => $item[2][Batch::UPSERT],
+						Batch::MULTIPLE => $item[2][Batch::MULTIPLE]
+					]);
+				}
+
+				if ($op === Batch::DELETE) {
+					$writer->add([
+						self::CRITERIA => $item[0],
+						Batch::LIMIT => $item[1][Batch::LIMIT],
+					]);
+				}
 			}
 
-			$result = $batch->execute(['w' => 1]);
+			$result = $writer->execute(['w' => 1]);
 
 			if (isset($result['ok'])) {
-				$rows = $this->processResult($result);
-				$this->driver->query->onQuery($this->collection, "$op - batch", ['w' => 1], $rows);
-				$return = $return + $rows;
-
-				if (isset($result['upserted'])) {
-					$this->upserted = $this->driver->resultFactory->create($result['upserted']);
-				}
+				$results = array_merge($results, $result);
+			} else {
+				$errors[] = $result;
 			}
 		}
 
-		return $return;
+		if (isset($results['upserted'])) {
+			$upserted = array_map(function($item) {
+				return $item['_id'];
+			}, $results['upserted']);
+		}
+
+		$stats = $this->loadStats($results);
+		$stats[Result::INSERTED_IDS] = $inserted;
+		$stats[Result::UPSERTED_IDS] = $upserted;
+
+		return $stats;
 	}
 
-	public function getUpserted()
-	{
-		return $this->upserted->fetchPairs('index', '_id');
-	}
-
-	private function processResult($result)
+	private function loadStats($result)
 	{
 		$return = [];
 
-		foreach ((array) $result as $item => $value) {
-			if (substr($item, 0, 1) === 'n') {
-				$return[strtolower(substr($item, 1))] = $value;
-			}
+		$stats = [Result::UPDATED, Result::DELETED, Result::INSERTED, Result::UPSERTED, Result::MATCHED];
+
+		foreach ($stats as $key) {
+			$ukey = 'n' . ucfirst($key);
+			$return[$key] = isset($result[$ukey]) ? $result[$ukey] : 0;
 		}
 
 		return $return;

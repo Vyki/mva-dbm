@@ -4,20 +4,19 @@ namespace Dbm\Tests;
 
 use Mockery,
 	Tester\Assert,
-	Mva\Dbm\Platform,
 	Mva\Dbm\Driver\IDriver,
 	Dbm\Tests\UnitTestCase,
-	Mva\Dbm\Platform\Mongo\MongoQueryProcessor;
+	Mva\Dbm\Query\QueryProcessor;
 
 require __DIR__ . "/../../bootstrap.php";
 
-class MongoProcessorModifiersTest extends UnitTestCase
+class QueryProcessorModifiersTest extends UnitTestCase
 {
 
 	/** @var IDriver */
 	private $driver;
 
-	/** @var MongoQueryProcessor */
+	/** @var QueryProcessor */
 	private $preprocessor;
 
 	function setUp()
@@ -25,7 +24,7 @@ class MongoProcessorModifiersTest extends UnitTestCase
 		parent::setUp();
 
 		$this->driver = Mockery::mock(IDriver::class);
-		$this->preprocessor = new MongoQueryProcessor($this->driver);
+		$this->preprocessor = new QueryProcessor($this->driver);
 	}
 
 	function testProcessModifierString()
@@ -152,5 +151,5 @@ class MongoProcessorModifiersTest extends UnitTestCase
 
 }
 
-$test = new MongoProcessorModifiersTest();
+$test = new QueryProcessorModifiersTest();
 $test->run();

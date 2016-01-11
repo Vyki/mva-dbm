@@ -5,33 +5,33 @@
     "keywords": ["mva", "mongo"],
     "license": "MIT",
     "authors": [
-	{
-	    "name": "Roman Vykuka",
-	    "homepage": "http://home.zcu.cz/~vykuka",
-	    "email": "vykuka@kee.zcu.cz"
-	}
+        {
+            "name": "Roman Vykuka",
+            "homepage": "http://home.zcu.cz/~vykuka",
+            "email": "vykuka@kee.zcu.cz"
+        }
     ],
     "require": {
-	"php": ">=5.5.0",
-	"ext-mongo": ">=1.6.0",
-	"nette/utils": "~2.3"
+        "php": ">=5.5.0"
     },
     "require-dev": {
-	"nette/tester": "~1.3",
+        "nette/tester": "~1.3",
         "mockery/mockery": "~0.9"
     },
     "autoload": {
-	"psr-0": {
-	    "Mva\\Dbm\\": "src/"
-	},
-	"classmap": [
-	    "src/Mva/Dbm/exceptions.php"
-	]
+        "psr-0": {
+            "Mva\\Dbm\\": "src/"
+        },
+        "classmap": [
+            "src/Mva/Dbm/exceptions.php",
+            "src/Mva/Dbm/Query/interfaces.php",
+            "src/Mva/Dbm/Result/interfaces.php"
+        ]
     },
     "extra": {
-	"branch-alias": {
-	    "dev-master": "2.1-dev"
-	}
+        "branch-alias": {
+            "dev-master": "2.1-dev"
+        }
     }
 }
 

@@ -8,22 +8,32 @@
 
 namespace Mva\Dbm;
 
-class NotSupportedException extends \Exception
+class NotSupportedException extends \LogicException
 {
 	
 }
 
-class MemberAccessException extends \Exception
+class MemberAccessException extends \LogicException
 {
 	
 }
 
-class InvalidStateException extends \Exception
+class InvalidStateException extends \RuntimeException
 {
 	
 }
 
-class InvalidArgumentException extends \Exception
+class InvalidArgumentException extends \InvalidArgumentException
 {
 	
+}
+
+class DriverException extends \Exception
+{
+	
+}
+
+class QueryException extends DriverException
+{
+
 }

@@ -6,12 +6,12 @@ use Mockery,
 	Tester\Assert,
 	Dbm\Tests\UnitTestCase,
 	Mva\Dbm\Driver\IDriver,
-	Mva\Dbm\Result\IResultFactory,
-	Mva\Dbm\Platform\Mongo\MongoResultFactory;
+	Mva\Dbm\Result\ResultFactory,
+	Mva\Dbm\Result\IResultFactory;
 
 require __DIR__ . "/../../bootstrap.php";
 
-class MongoResultTest extends UnitTestCase
+class ResultTest extends UnitTestCase
 {
 
 	/** @var IDriver */
@@ -25,7 +25,7 @@ class MongoResultTest extends UnitTestCase
 		parent::setUp();
 
 		$this->driver = Mockery::mock(IDriver::class);
-		$this->factory = new MongoResultFactory($this->driver);
+		$this->factory = new ResultFactory($this->driver);
 	}
 
 	function getResultData()
@@ -134,7 +134,7 @@ class MongoResultTest extends UnitTestCase
 
 	function testFetchPairs()
 	{
-		$this->driver->shouldReceive('convertToPhp')->times(4)->withAnyArgs()->andReturnNull();
+		$this->driver->shouldReceive('convertToPhp')->times(12)->withAnyArgs()->andReturnNull();
 
 		$result = $this->factory->create($this->getResultData());
 
@@ -167,14 +167,15 @@ class MongoResultTest extends UnitTestCase
 		$this->driver->shouldNotReceive('convertToPhp');
 
 		$data = $this->getResultData();
+		
 		$result = $this->factory->create([$data[0], $data[1]]);
 
-		$return = $result->getResult();
+		$return = $result->getRawResult();
 
 		Assert::same($return, [$data[0], $data[1]]);
 	}
 
 }
 
-$test = new MongoResultTest();
+$test = new ResultTest();
 $test->run();

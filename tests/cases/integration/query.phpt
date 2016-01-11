@@ -10,183 +10,145 @@ namespace Dbm\Tests\Driver\Mongo;
 use Tester\Assert,
 	Mva\Dbm\Query\IQuery,
 	Dbm\Tests\DriverTestCase,
-	Mva\Dbm\Platform\Mongo\MongoQueryBuilder;
+	Mva\Dbm\Query\QueryBuilder;
 
 $connection = require __DIR__ . "/../../bootstrap.php";
 
-class QueryTest extends DriverTestCase
+class QueryMongodbTest extends DriverTestCase
 {
+
+	/** @var IQuery */
+	private $query;
 
 	protected function setUp()
 	{
 		$this->loadData('test_query');
+		$this->query = $this->getConnection()->getQuery();
 	}
 
-	/** @return IQuery */
-	function getQuery()
+	function testFind()
 	{
-		$query = $this->getConnection()->getDriver()->getQuery();
-		return $query;
+		$result = $this->query->find('test_query', ['!_id', 'name', 'domain'], ['domain = beta'], [IQuery::ORDER => 'name ASC']);
+
+		Assert::equal([['name' => 'Test 5', 'domain' => 'beta'], ['name' => 'Test 6', 'domain' => 'beta']], $result->fetchAll());
 	}
 
-	function testSelect()
+	function testFindLimit()
 	{
-		$query = $this->getQuery();
+		$conds = ['pr_id = %i' => 2];
+		$fields = ['!_id', 'name'];
 
-		$query->onQuery[] = function ($coll, $oper, $param, $res) use (&$log) {
-			$log = [$coll, $oper, $param, $res];
-		};
+		$result1 = $this->query->find('test_query', $fields, $conds, [
+					IQuery::ORDER => 'name ASC',
+					IQuery::LIMIT => 2])->fetchPairs(NULL, 'name');
 
-		$result = $query->select('test_query', ['!_id', 'name', 'domain'], ['domain = beta']);
+		Assert::equal(['Test 1', 'Test 2'], $result1);
 
-		$data = $result->fetchAll();
+		$result2 = $this->query->find('test_query', $fields, $conds, [
+					IQuery::ORDER => 'name ASC',
+					IQuery::LIMIT => 2,
+					IQuery::OFFSET => 1])->fetchPairs(NULL, 'name');
 
-		Assert::same([['name' => 'Test 5', 'domain' => 'beta'], ['name' => 'Test 6', 'domain' => 'beta']], $data);
-
-		Assert::same(['test_query', 'select', [
-				'fields' => ['_id' => FALSE, 'name' => TRUE, 'domain' => TRUE],
-				'criteria' => ['domain' => 'beta'],
-				'options' => []], ['matched' => count($data)]], $log);
+		Assert::equal(['Test 2', 'Test 3'], $result2);
 	}
 
 	function testDistinct()
 	{
-		$query = $this->getQuery();
-
-		$query->onQuery[] = function ($coll, $oper, $param, $res) use (&$log) {
-			$log = [$coll, $oper, $param, $res];
-		};
-
-		$result = $query->select('test_query', [IQuery::SELECT_DISTINCT => 'domain']);
+		$result = $this->query->distinct('test_query', 'domain');
 
 		$data = $result->fetchAll();
 
 		Assert::same([['domain' => 'alpha'], ['domain' => 'beta']], $data);
-
-		Assert::same(['test_query', 'select - distinct', ['fields' => 'domain', 'criteria' => []], ['count' => count($data)]], $log);
 	}
 
 	function testCount()
 	{
-		$query = $this->getQuery();
-
-		$query->onQuery[] = function ($coll, $oper, $param, $res) use (&$log) {
-			$log = [$coll, $oper, $param, $res];
-		};
-
-		$result = $query->select('test_query', IQuery::SELECT_COUNT, ['domain' => 'alpha']);
+		$result = $this->query->count('test_query', ['domain' => 'alpha']);
 
 		Assert::same($result, 4);
-
-		Assert::same(['test_query', 'select - count', ['criteria' => ['domain' => 'alpha'], 'options' => []], ['count' => $result]], $log);
 	}
 
 	function testAggregation()
 	{
-		$query = $this->getQuery();
-
-		$builder = new MongoQueryBuilder();
+		$builder = new QueryBuilder();
 		$builder->select('SUM(size) AS size_total');
 		$builder->group('domain');
+		$builder->order('_id.domain ASC');
 		$builder->where('size > %i', 10);
 
-		$result1 = $query->select('test_query', $builder->buildAggreregateQuery());
+		$result1 = $this->query->aggregate('test_query', $builder->buildAggreregateQuery())->fetchAll();
 
-		Assert::same([
-			['domain' => 'beta', 'size_total' => 199],
-			['domain' => 'alpha', 'size_total' => 82]], $result1->fetchAll());
+		Assert::equal([
+			['domain' => 'alpha', 'size_total' => 82],
+			['domain' => 'beta', 'size_total' => 199]], $result1);
 
 		$builder->having('size_total > %i', 82);
 
-		$query->onQuery[] = function ($coll, $oper, $param, $res) use (&$log) {
-			$log = [$coll, $oper, count($param), $res];
-		};
+		$result2 = $this->query->aggregate('test_query', $builder->buildAggreregateQuery());
 
-		$result2 = $query->select('test_query', $builder->buildAggreregateQuery());
-
-		Assert::same([['domain' => 'beta', 'size_total' => 199]], $result2->fetchAll());
-
-		Assert::same(['test_query', 'select - aggregate', 3, ['count' => count($result2)]], $log);
-	}
-
-	function testAggregationCount()
-	{
-		$query = $this->getQuery();
-
-		$builder = new MongoQueryBuilder();
-
-		$builder->addSelect('SUM(*) AS count');
-
-		$result1 = $query->select('test_query', $builder->buildAggreregateQuery())->fetch();
-
-		Assert::same(6, $result1['count']);
+		Assert::equal([['domain' => 'beta', 'size_total' => 199]], $result2->fetchAll());
 	}
 
 	function testInsert()
 	{
-		$query = $this->getQuery();
-
-		$query->onQuery[] = function ($coll, $oper, $param, $res) use (&$log) {
-			$log = [$coll, $oper, $param, $res];
-		};
-
-		$insert = [
+		$data = [
 			'pr_id%i' => '2',
 			'name' => 'Test 7',
 			'domain' => 'beta',
 			'size' => 101,
-			'points%f[]' => ['18.0', 31.32, 64],
+			'points%f[]' => ['18.0', 31.3, 64],
 			'type' => 10,
-			'flag.a' => 'a',
-			'flag.b' => 'b'
+			'flag.a' => 'av',
+			'flag.b' => 'bw'
 		];
 
-		$data = $query->insert('test_query', $insert);
+		$inserted = [
+			'pr_id' => 2,
+			'name' => 'Test 7',
+			'domain' => 'beta',
+			'size' => 101,
+			'points' => [18.0, 31.3, 64.0],
+			'type' => 10,
+			'flag' => ['a' => 'av', 'b' => 'bw']
+		];
 
-		Assert::type('array', $data);
-		Assert::same(['pr_id', 'name', 'domain', 'size', 'points', 'type', 'flag', '_id'], array_keys($data));
-		Assert::same(['a' => 'a', 'b' => 'b'], $data['flag']);
-		Assert::type('string', $data['_id']);
-		Assert::same(['test_query', 'insert', ['data' => $data, 'options' => []], ['inserted' => 1]], $log);
+		$result = $this->query->insert('test_query', $data);
 
-		$result = $query->select('test_query', ['!_id'], ['_id = %oid' => $data['_id']])->fetch();
+		Assert::type('string', $result['_id']);
 
-		unset($data['_id']);
+		$id = $result['_id'];
+		unset($result['_id']);
 
-		Assert::same($data, $result);
+		Assert::equal($inserted, $result);
+
+		$fetched = $this->query->find('test_query', '!_id', ['_id = %oid' => $id])->fetch();
+
+		Assert::equal($inserted, $fetched);
+	}
+
+	function testDelete()
+	{
+		$return = $this->query->delete('test_query', ['pr_id = %i' => 2]);
+		Assert::same(3, $return);
 	}
 
 	function testUpdate()
 	{
-		$query = $this->getQuery();
-
-		$query->onQuery[] = function ($coll, $oper, $param, $res) use (&$log) {
-			$param['criteria']['_id'] = (string) $param['criteria']['_id'];
-			$log = [$coll, $oper, $param, $res];
-		};
-
-		$oid = '54ccf5639ab253f598d6b4a5';
 		$data = ['domain' => 'theta'];
-		$condition = ['_id = %oid' => $oid];
+		$condition = ['_id = %oid' => '54ccf5639ab253f598d6b4a5'];
 
-		$ret = $query->update('test_query', $data, $condition);
+		$ret = $this->query->update('test_query', $data, $condition);
 
 		Assert::same(1, $ret);
 
-		Assert::same(['test_query', 'update', [
-				'data' => ['$set' => $data],
-				'criteria' => ['_id' => $oid],
-				'options' => ['upsert' => FALSE, 'multiple' => TRUE]], ['modified' => $ret]], $log);
+		$result = $this->query->find('test_query', ['domain'], $condition)->fetch();
 
-		$result = $query->select('test_query', ['domain'], $condition)->fetch();
 		Assert::same('theta', $result['domain']);
 	}
 
 	function testUpdateUpsert()
 	{
-		$query = $this->getQuery();
-
-		$query->onQuery[] = function ($coll, $oper, $param, $res) use (&$log) {
+		$this->query->onQuery[] = function ($coll, $oper, $param, $res) use (&$log) {
 			$log = [$coll, $oper, $param, $res];
 		};
 
@@ -201,41 +163,34 @@ class QueryTest extends DriverTestCase
 
 		$condition = ['domain' => 'gama'];
 
-		$data = $query->update('test_query', $insert, $condition, TRUE);
+		$upserted = $this->query->update('test_query', $insert, $condition, TRUE);
 
-		Assert::same(['_id', 'pr_id', 'name', 'domain', 'size', 'points', 'type'], array_keys($data));
+		Assert::type('string', $upserted['_id']);
 
-		Assert::type('string', $data['_id']);
+		$insert['name'] = 'Test 77';
 
-		Assert::same(['test_query', 'upsert', [
-				'data' => $data, 'criteria' => $condition,
-				'options' => ['upsert' => TRUE, 'multiple' => TRUE]], ['upserted' => 1]], $log);
+		$rows = $this->query->update('test_query', $insert, $condition, TRUE);
 
-		$rows = $query->update('test_query', $insert, $condition, TRUE);
 		Assert::same(1, $rows);
 	}
 
 	function testUpdateMultiple()
 	{
-		$query = $this->getQuery();
-
 		$conditionBeta = ['domain' => 'beta'];
 		$conditionTheta = ['domain' => 'theta'];
 
-		$rows = $query->update('test_query', ['domain' => 'theta'], $conditionBeta, ['multiple' => TRUE]);
+		$rows = $this->query->update('test_query', $conditionTheta, $conditionBeta, FALSE, TRUE);
 		Assert::same(2, $rows);
 
-		$countBeta = $query->select('test_query', IQuery::SELECT_COUNT, $conditionBeta);
+		$countBeta = $this->query->count('test_query', $conditionBeta);
 		Assert::same(0, $countBeta);
 
-		$countTheta = $query->select('test_query', IQuery::SELECT_COUNT, $conditionTheta);
+		$countTheta = $this->query->count('test_query', $conditionTheta);
 		Assert::same(2, $countTheta);
 	}
 
 	function testUpdateManipulation()
 	{
-		$query = $this->getQuery();
-
 		$condition = ['_id = %oid' => '54ccf3509ab253f598d6b4a0'];
 
 		$data = [
@@ -245,11 +200,11 @@ class QueryTest extends DriverTestCase
 			'$rename' => ['type' => 'category']
 		];
 
-		$rows = $query->update('test_query', $data, $condition);
+		$rows = $this->query->update('test_query', $data, $condition);
 
 		Assert::same(1, $rows);
 
-		$result = $query->select('test_query', ['!_id'], $condition)->fetch();
+		$result = $this->query->find('test_query', ['!_id'], $condition)->fetch();
 
 		Assert::same('test update', $result['name']);
 		Assert::false(array_key_exists('domain', $result));
@@ -257,23 +212,9 @@ class QueryTest extends DriverTestCase
 		Assert::true(array_key_exists('category', $result));
 	}
 
-	function testDelete()
-	{
-		$query = $this->getQuery();
-
-		$query->onQuery[] = function ($coll, $oper, $param, $res) use (&$log) {
-			$log = [$coll, $oper, $param, $res];
-		};
-
-		$return = $query->delete('test_query', ['pr_id = %i' => 2]);
-
-		Assert::same(3, $return);
-		Assert::same(['test_query', 'delete', ['criteria' => ['pr_id' => 2], 'options' => []], ['deleted' => 3]], $log);
-	}
-
 }
 
-$test = new QueryTest();
+$test = new QueryMongodbTest();
 $test->run();
 
 

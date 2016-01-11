@@ -8,6 +8,9 @@
 
 namespace Mva\Dbm\Driver;
 
+use Mva\Dbm\Query\IQuery,
+	Mva\Dbm\Query\IWriteBatch;
+
 interface IDriver
 {
 
@@ -23,9 +26,13 @@ interface IDriver
 
 	function getResource();
 
-	function getQuery();
+	function getDatabaseName();
 
-	function getQueryBuilder();
+	/** @return IQuery */
+	function getQueryAdapter();
+
+	/** @return IWriteBatch */
+	function getWriteBatch();
 
 	function convertToPhp($item);
 

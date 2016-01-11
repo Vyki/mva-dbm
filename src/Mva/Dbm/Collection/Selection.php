@@ -8,16 +8,39 @@
 
 namespace Mva\Dbm\Collection;
 
-use Nette,
-	Mva\Dbm\Connection;
+use Mva\Dbm\Connection,
+	Mva\Dbm\Query\Query,
+	Mva\Dbm\Query\QueryBuilder,
+	Mva\Dbm\Result\Document\DocumentFactory;
 
 /**
  * Filtered collection representation.
  * Collection is based on the library Nette\Database https://github.com/nette/database by Jakub Vrana, Jan Skrasek, David Grudl
  *
  */
-class Selection extends Nette\Object implements \IteratorAggregate, \Countable, \ArrayAccess
+class Selection implements \IteratorAggregate, \Countable
 {
+
+	/** @var string */
+	protected $name;
+
+	/** @var Query */
+	protected $query;
+
+	/** @var \Generator */
+	protected $result;
+
+	/** @var \Generator */
+	protected $documents;
+
+	/** @var Connection */
+	protected $connection;
+
+	/** @var QueryBuilder */
+	protected $queryBuilder;
+
+	/** @var DocumentFactory */
+	protected $documentFactory;
 
 	/** @var string */
 	protected $primaryKey = '_id';
@@ -25,28 +48,58 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 	/** @var string */
 	protected $primaryModifier = '%oid';
 
-	/** @var Document modifiable data in [primary key => Document] format */
-	public $data;
-
-	/** @var \Generator */
-	protected $result;
-
-	/** @var Connection */
-	protected $connection;
-
-	/** @var Driver\IQueryBuilder */
-	protected $queryBuilder;
-
 	public function __construct(Connection $connection, $name)
 	{
+
+		$this->name = $name;
 		$this->connection = $connection;
-		$this->queryBuilder = $connection->getQueryBuilder();
-		$this->queryBuilder->from($name);
+		$this->query = $connection->getQuery();
+		$this->queryBuilder = $connection->createQueryBuilder();
 	}
 
 	public function __clone()
 	{
 		$this->queryBuilder = clone $this->queryBuilder;
+	}
+
+	################################ getters and setters ################################
+
+	/**
+	 * @return string
+	 */
+	public function getPrimary()
+	{
+		return $this->primaryKey;
+	}
+
+	/**
+	 * @param string
+	 * @param string
+	 */
+	public function setPrimary($key, $modifier = NULL)
+	{
+		$this->primaryKey = (string) $key;
+		$modifier && $this->primaryModifier = (string) $modifier;
+	}
+
+	/**
+	 * @return Document\IDocumentFactory	 
+	 */
+	public function getDocumentFactory()
+	{
+		if (!$this->documentFactory) {
+			$this->documentFactory = new Document\DocumentFactory();
+		}
+
+		return $this->documentFactory;
+	}
+
+	/**
+	 * @param Document\IDocumentFactory	 
+	 */
+	public function setDocumentFactory(Document\IDocumentFactory $factory)
+	{
+		$this->documentFactory = $factory;
 	}
 
 	/**
@@ -58,36 +111,20 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 		return $this->queryBuilder;
 	}
 
-	public function setPrimary($key, $modifier = NULL)
-	{
-		$this->primaryKey = (string) $key;
-		$modifier && $this->primaryModifier = (string) $modifier;
-	}
-
-	public function getPrimary()
-	{
-		return $this->primaryKey;
-	}
+	################################ querying ################################
 
 	/** 	
-	 *  @return int|Document number of changed documents or upserted Document object
+	 * @return int|Document number of changed documents or upserted Document object
 	 */
 	public function update($data, $upsert = FALSE, $multi = TRUE)
 	{
-		$data = (array) $data;
+		$wdata = (array) $data;
 
-		$updated = $this->connection->query->update(
-				$this->queryBuilder->from, $data, $this->queryBuilder->where, (bool) $upsert, (bool) $multi
-		);
+		$updated = $this->query->update($this->name, $wdata, $this->queryBuilder->where, (bool) $upsert, (bool) $multi);
 
-		if (isset($updated[$this->primaryKey])) {
-			$key = $updated[$this->primaryKey];
+		if ($upsert && isset($updated[$this->primaryKey])) {
 			$doc = $this->createDocument($updated);
-
-			if ($this->data !== NULL) {
-				$this->data[$key] = $doc;
-			}
-
+			$this->result && array_push($this->result, $doc);
 			return $doc;
 		}
 
@@ -99,27 +136,22 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 	 */
 	public function insert($data)
 	{
-		$data = (array) $data;
+		$wdata = (array) $data;
 
-		$inserted = $this->connection->query->insert($this->queryBuilder->from, $data);
+		$inserted = $this->query->insert($this->name, $wdata);
 
 		if (isset($inserted[$this->primaryKey])) {
-			$key = $inserted[$this->primaryKey];
 			$doc = $this->createDocument($inserted);
-
-			if ($this->data !== NULL) {
-				$this->data[$key] = $doc;
-			}
-
+			$this->result && array_push($this->result, $doc);
 			return $doc;
 		}
 
-		return FALSE;
+		return $inserted;
 	}
 
-	public function delete()
+	public function delete($multi = TRUE)
 	{
-		return $this->connection->query->delete($this->queryBuilder->from, $this->queryBuilder->where);
+		return $this->query->delete($this->name, $this->queryBuilder->where, $multi);
 	}
 
 	/**
@@ -130,7 +162,8 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 	 */
 	public function where($condition, $parameters = [])
 	{
-		$this->emptyResultSet();
+		$this->emptyResult();
+
 		$this->queryBuilder->addWhere($condition, $parameters);
 		return $this;
 	}
@@ -153,7 +186,7 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 	 */
 	public function select($items)
 	{
-		$this->emptyResultSet();
+		$this->emptyResult();
 
 		$this->queryBuilder->addSelect(func_get_args());
 		return $this;
@@ -166,9 +199,9 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 	 */
 	public function order($items)
 	{
-		$this->emptyResultSet();
+		$this->emptyResult();
 
-		$this->queryBuilder->addOrder(func_get_args());
+		empty($items) ? $this->queryBuilder->order(NULL) : $this->queryBuilder->addOrder(func_get_args());
 		return $this;
 	}
 
@@ -180,10 +213,9 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 	 */
 	public function limit($limit, $offset = NULL)
 	{
-		$this->emptyResultSet();
+		$this->emptyResult();
 
-		$this->queryBuilder->limit($limit);
-		($offset !== NULL) && $this->queryBuilder->offset($offset);
+		$this->queryBuilder->limit($limit, $offset);
 		return $this;
 	}
 
@@ -195,12 +227,17 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 	 */
 	public function count($column = NULL)
 	{
-		if (!$column) {
-			$this->execute();
-			return count($this->data);
+		if ($column) {
+			return $this->sum($column);
 		}
 
-		return $this->sum($column);
+		if ($this->result) {
+			return count($this->result);
+		}
+
+		list(, $criteria, $options) = $this->queryBuilder->buildSelectQuery();
+
+		return $this->query->count($this->name, $criteria, $options);
 	}
 
 	/**
@@ -210,7 +247,7 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 	 */
 	public function group($items)
 	{
-		$this->emptyResultSet();
+		$this->emptyResult();
 		$this->queryBuilder->group(func_get_args());
 		return $this;
 	}
@@ -223,7 +260,7 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 	 */
 	public function having($condition, $parameter = [])
 	{
-		$this->emptyResultSet();
+		$this->emptyResult();
 		$this->queryBuilder->addHaving($condition, $parameter);
 		return $this;
 	}
@@ -236,9 +273,9 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 	 */
 	public function aggregate($type, $item)
 	{
-		$selection = new Selection($this->connection, $this->queryBuilder->from);
+		$selection = $this->createSelectionInstance();
 
-		$selection->queryBuilder->importConditions($this->queryBuilder);
+		$selection->getQueryBuilder()->importConditions($this->queryBuilder);
 
 		$selection->select("$type($item) AS _gres");
 
@@ -281,12 +318,23 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 
 	################## quick access ##################
 
+	/**
+	 * Returns row specified by primary key.
+	 * @param  mixed primary key
+	 * @return Document or FALSE if there is no such document
+	 */
+	public function get($key)
+	{
+		$clone = clone $this;
+		return $clone->wherePrimary($key)->fetch();
+	}
+
 	/** @return Document */
 	public function fetch()
 	{
 		$this->execute();
-		$return = current($this->data);
-		next($this->data);
+		$return = current($this->result);
+		next($this->result);
 		return $return;
 	}
 
@@ -321,15 +369,6 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 	}
 
 	/**
-	 * @param string path looks like 'field|field[]field->field=field'
-	 * @return array|\stdClass
-	 */
-	public function fetchAssoc($path)
-	{
-		return Nette\Utils\Arrays::associate($this->fetchAll(), $path);
-	}
-
-	/**
 	 * @return Document[] 
 	 */
 	public function fetchAll()
@@ -342,31 +381,42 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 	/**
 	 * @return Document
 	 */
-	protected function createDocument(array $doc)
+	protected function createDocument(array $data)
 	{
-		return new Document($doc);
+		return $this->documentFactory === FALSE ? $data : $this->getDocumentfactory()->create($data);
 	}
 
+	/**
+	 * @return Selection	 
+	 */
+	public function createSelectionInstance($collection = NULL)
+	{
+		return new Selection($this->connection, $collection ? : $this->name);
+	}
+
+	/**
+	 * @return void 
+	 */
 	protected function execute()
 	{
-		if ($this->data !== NULL) {
+		if ($this->result !== NULL) {
 			return;
 		}
 
-		$this->data = [];
+		$this->result = [];
 
 		list($fields, $criteria, $options) = $this->queryBuilder->buildSelectQuery();
 
-		$result = $this->connection->query->select($this->queryBuilder->from, $fields, $criteria, $options);
+		$result = $this->query->find($this->name, $fields, $criteria, $options);
 
-		foreach ($result as $key => $doc) {
-			$this->data[$key] = $this->createDocument($doc);
+		while ($data = $result->fetch()) {
+			$this->result[] = $this->createDocument($data);
 		}
 	}
 
-	protected function emptyResultSet()
+	protected function emptyResult()
 	{
-		$this->data = NULL;
+		$this->result = NULL;
 	}
 
 	##################  interface Iterator ##################
@@ -387,56 +437,9 @@ class Selection extends Nette\Object implements \IteratorAggregate, \Countable, 
 	 */
 	private function createDocumentGenerator()
 	{
-		foreach ($this->data as $key => $value) {
-			yield $key => $value;
+		foreach ($this->result as $value) {
+			yield $value;
 		}
-	}
-
-	################## interface ArrayAccess ##################
-
-	/**
-	 * Set document.
-	 * @param  string document ID
-	 * @param  Document|array
-	 * @return NULL
-	 */
-	public function offsetSet($key, $value)
-	{
-		$this->execute();
-		$this->data[$key] = $value instanceof Document ? $value : $this->createDocument($value);
-	}
-
-	/**
-	 * Returns specified document.
-	 * @param  string document ID
-	 * @return Document or NULL if there is no such document
-	 */
-	public function offsetGet($key)
-	{
-		$this->execute();
-		return $this->data[$key];
-	}
-
-	/**
-	 * Tests if document exists.
-	 * @param  string document ID
-	 * @return bool
-	 */
-	public function offsetExists($key)
-	{
-		$this->execute();
-		return isset($this->data[$key]);
-	}
-
-	/**
-	 * Removes document from result set.
-	 * @param  string document ID
-	 * @return NULL
-	 */
-	public function offsetUnset($key)
-	{
-		$this->execute();
-		unset($this->data[$key]);
 	}
 
 }

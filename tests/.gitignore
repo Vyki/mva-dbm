@@ -2,3 +2,5 @@ output
 /performance
 /temp
 /test.log
+/drivers.ini
+/php.ini

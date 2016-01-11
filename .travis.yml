@@ -3,18 +3,22 @@ php:
     - 5.5
     - 5.6
     - 7.0
-    - hhvm
 
 matrix:
+  fast_finish: true
   allow_failures:
     - php: 7.0
-    - php: hhvm
-
+    
+cache:
+    directories:
+        - $HOME/.composer/cache
+        - vendor
+        
 before_install:
     - composer self-update
 
 script:
-    - vendor/bin/tester tests -s -p php -c tests/php-unix.ini --setup tests/inc/setup.php -s
+    - vendor/bin/tester tests -s -p php -c tests/php.ini --setup tests/inc/setup.php -s
 
 after_failure:
     # Print *.actual content
@@ -25,8 +29,18 @@ before_script:
     - echo 'deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen' | sudo tee /etc/apt/sources.list.d/mongodb.list
     - sudo apt-get update
     - sudo apt-get install -y mongodb-org=2.6.0 mongodb-org-server=2.6.0 mongodb-org-shell=2.6.0 mongodb-org-mongos=2.6.0 mongodb-org-tools=2.6.0
-    - sleep 10
+    - sleep 5
     - mongo --version
-    - printf "\n" | pecl install -f mongo-1.6.0
-    - echo "extension = mongo.so" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini
-    - composer install --no-interaction --dev --prefer-source
+    # mongo db driver install for PHP 5 and 7
+    - printf "\n" | pecl install -f mongodb-1.1.2
+    # setup environment for PHP 7
+    - if [ "$TRAVIS_PHP_VERSION" == "7.0" ]; then echo "extension = mongodb.so" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini; fi
+    - if [ "$TRAVIS_PHP_VERSION" == "7.0" ]; then cp ./tests/drivers-php7.ini ./tests/drivers.ini; fi
+    - if [ "$TRAVIS_PHP_VERSION" == "7.0" ]; then cp ./tests/php7.ini ./tests/php.ini; fi
+    # setup environment for PHP 5
+    - if ! [ "$TRAVIS_PHP_VERSION" == "7.0" ]; then printf "\n" | pecl install -f mongo-1.6.0; fi
+    - if ! [ "$TRAVIS_PHP_VERSION" == "7.0" ]; then echo -e "extension = mongo.so\nextension = mongodb.so" >> ~/.phpenv/versions/$(phpenv version-name)/etc/php.ini; fi    
+    - if ! [ "$TRAVIS_PHP_VERSION" == "7.0" ]; then cp ./tests/drivers-php5.ini ./tests/drivers.ini; fi
+    - if ! [ "$TRAVIS_PHP_VERSION" == "7.0" ]; then cp ./tests/php5.ini ./tests/php.ini; fi
+    # setup composer
+    - travis_retry composer update --no-interaction

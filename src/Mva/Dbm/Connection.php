@@ -8,9 +8,10 @@
 
 namespace Mva\Dbm;
 
-use Nette,
-	MongoDB,
-	MongoCollection,
+use Mva\Dbm\Query\Query,
+	Mva\Dbm\Query\QueryBuilder,
+	Mva\Dbm\Query\QueryWriteBatch,
+	Mva\Dbm\Query\QueryProcessor,
 	Mva\Dbm\Collection\Selection;
 
 /**
@@ -18,8 +19,11 @@ use Nette,
  * @property-read Query\IQuery $query
  * @property-read Driver\IDriver $driver
  */
-class Connection extends Nette\Object
+class Connection
 {
+
+	/** @var Query */
+	private $query;
 
 	/** @var array */
 	private $config;
@@ -30,10 +34,14 @@ class Connection extends Nette\Object
 	/** @var Driver\IDriver */
 	private $driver;
 
+	/** @var Query\QueryProcessor */
+	private $preprocessor;
+
 	public function __construct(array $config)
 	{
 		$this->config = $config;
 		$this->driver = $this->createDriver($config);
+		$this->preprocessor = new QueryProcessor($this->driver);
 	}
 
 	/**
@@ -62,38 +70,24 @@ class Connection extends Nette\Object
 
 	/**
 	 * Returns selected database
-	 * @return MongoDB
+	 * @return string
 	 */
-	public function getDatabase()
+	public function getDatabaseName()
 	{
-		return $this->driver->getDatabase();
-	}
-
-	/**
-	 * Returns selected collection
-	 * @return MongoCollection
-	 */
-	public function getCollection($name)
-	{
-		return $this->driver->getCollection($name);
+		return $this->driver->getDatabaseName();
 	}
 
 	/**
 	 * Returns parameter builder
-	 * @return Driver\IQuery
+	 * @return Query
 	 */
 	public function getQuery()
 	{
-		return $this->driver->getQuery();
-	}
+		if (!$this->query) {
+			$this->query = new Query($this->driver, $this->preprocessor);
+		}
 
-	/**
-	 * Returns parameter builder
-	 * @return Driver\IQueryBuilder
-	 */
-	public function getQueryBuilder()
-	{
-		return $this->driver->getQueryBuilder();
+		return $this->query;
 	}
 
 	/**
@@ -104,6 +98,24 @@ class Connection extends Nette\Object
 	public function getSelection($name)
 	{
 		return new Selection($this, $name);
+	}
+
+	/**
+	 * Returns parameter builder
+	 * @return QueryBuilder
+	 */
+	public function createQueryBuilder()
+	{
+		return new QueryBuilder();
+	}
+
+	/**
+	 * Returns write batch
+	 * @return QueryWriteBatch
+	 */
+	public function createWriteBatch()
+	{
+		return new QueryWriteBatch($this->preprocessor);
 	}
 
 	/**

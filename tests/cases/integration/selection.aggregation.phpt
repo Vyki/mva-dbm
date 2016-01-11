@@ -7,90 +7,77 @@
 
 namespace Dbm\Tests\Collection;
 
-use Mva,
-	Tester\Assert,
+use Tester\Assert,
 	Dbm\Tests\DriverTestCase,
-	Mva\Dbm\Collection\Document;
+	Mva\Dbm\Collection\Selection,
+	Mva\Dbm\Collection\Document\Document;
 
 $connection = require __DIR__ . "/../../bootstrap.php";
 
 class SelectionAggregationTest extends DriverTestCase
 {
 
+	/** @var Selection */
+	private $selection;
+
 	protected function setUp()
 	{
-		$this->loadData('test_agr');
-	}
-
-	/** @return Mva\Mongo\Selection */
-	function getSelection()
-	{
-		return $this->getConnection()->getSelection('test_agr');
+		$this->loadData('test_aggregate');
+		$this->selection = $this->getConnection()->getSelection('test_aggregate');
 	}
 
 	function testCount()
 	{
-		$collection = $this->getSelection();
-
-		$count = $collection->count();
-
-		Assert::equal(6, $count);
-
-		$collection->where(['pr_id' => 2]);
-
-		$count2 = $collection->count();
-
-		Assert::equal(3, $count2);
+		Assert::equal(6, $this->selection->count('*'));
+		Assert::equal(3, $this->selection->where(['pr_id' => 2])->count('*'));
 	}
 
 	function testMaxMinSum()
 	{
-		$collection = $this->getSelection();
-
-		$max = $collection->max('size');
-		$min = $collection->min('size');
+		$max = $this->selection->max('size');
+		$min = $this->selection->min('size');
 
 		Assert::equal(101, $max);
 		Assert::equal(10, $min);
 
-		$collection->where('domain', 'beta');
+		$this->selection->where('domain', 'beta');
 
-		$sum = $collection->sum('size');
+		$sum = $this->selection->sum('size');
 		Assert::equal(199, $sum);
 
-		$sum_not_number = $collection->sum('domain');
+		$sum_not_number = $this->selection->sum('domain');
 		Assert::equal(0, $sum_not_number);
 
-		$sum_undefined = $collection->sum('fake');
+		$sum_undefined = $this->selection->sum('fake');
 		Assert::equal(0, $sum_undefined);
 	}
 
 	function testFullAggregation()
 	{
-		$collection = $this->getSelection();
-		$collection->select('SUM(size) AS size_total');
-		$collection->group('domain');
-		$collection->where('size > %i', 10);
+		$this->selection->select('SUM(size) AS size_total');
+		$this->selection->group('domain');
+		$this->selection->where('size > %i', 10);
+		$this->selection->order('_id.domain DESC');
 
-		$beta = $collection->fetch();
+		$beta = $this->selection->fetch();
 
 		Assert::true($beta instanceof Document);
 
 		Assert::equal('beta', $beta->domain);
 		Assert::equal(199, $beta->size_total);
 
-		$alpha = $collection->fetch();
+		$alpha = $this->selection->fetch();
 
 		Assert::equal('alpha', $alpha->domain);
 		Assert::equal(82, $alpha->size_total);
 
-		Assert::equal(2, $collection->count());
+		Assert::equal(2, $this->selection->count());
 
-		$collection->having('size_total > %i', 82);
+		$this->selection->having('size_total > %i', 82);
 
-		$having_test = $collection->fetch();
+		$having_test = $this->selection->fetch();
 
-		Assert::equal(1, $collection->count());
+		Assert::equal(1, $this->selection->count());
 		Assert::equal('beta', $having_test->domain);
 		Assert::equal(199, $having_test->size_total);
 	}

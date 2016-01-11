@@ -6,11 +6,4 @@
  * @link       https://github.com/Vyki/mva-dbm
  */
 
-namespace Mva\Dbm\Result;
-
-interface IResultFactory
-{
-
-	/** @return IResult */
-	function create($data);
-}
+namespace Mva\Dbm\Query\Preferences;

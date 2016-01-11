@@ -15,9 +15,16 @@ interface IResult extends \Traversable
 
 	public function fetchAll();
 
+	public function fetchField();
+
 	public function fetchPairs($key = NULL, $value = NULL);
 
-	public function getResult();
+	public function getRawResult();
+}
 
-	public function normalizeDocument($document);
+interface IResultFactory
+{
+
+	/** @return IResult */
+	function create($data);
 }

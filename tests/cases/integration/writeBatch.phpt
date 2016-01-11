@@ -8,113 +8,57 @@
 namespace Dbm\Tests\Driver\Mongo;
 
 use Tester\Assert,
-	Dbm\Tests\DriverTestCase;
+	Dbm\Tests\DriverTestCase,
+	Mva\Dbm\Query\QueryWriteBatch,
+	Mva\Dbm\Result\ResultWriteBatch as Result;
 
 $connection = include __DIR__ . "/../../bootstrap.php";
 
 class WriteBatchTest extends DriverTestCase
 {
 
+	/** @var Mva\Dbm\Query\IWriteBatch */
+	private $batch;
+
+	/** @var QueryWriteBatch */
+	private $queue;
+
 	protected function setUp()
 	{
 		$this->loadData('test_batch');
-	}
-
-	public function getBatch()
-	{
-		return $this->getConnection()->getQuery()->batch('test_batch');
-	}
-
-	public function testInsert()
-	{
-		$batch = $this->getBatch();
-
-		$batch->insert($data1 = [
-			'pr_id' => 4,
-			'name' => 'Test 8',
-			'domain' => 'beta',
-			'size' => 101,
-			'points' => [18, 31, 64],
-			'type' => 10
-		]);
-
-		$batch->insert($data2 = [
-			'pr_id' => 4,
-			'name' => 'Test 10',
-			'domain' => 'beta',
-			'size' => 104,
-			'points' => [18, 31, 64],
-			'type' => 10
-		]);
-
-		$batch->insert([
-			'pr_id%i' => '4',
-			'name%s' => 'Test 8',
-			'domain%s' => 'beta',
-			'size%i' => '101',
-			'points%i[]' => ['18', 31, 64.01],
-			'type%i' => 10.1
-		]);
-
-		Assert::same([$data1, $data2, $data1], $batch->getQueue('insert'));
-	}
-
-	public function testUpdate()
-	{
-		$batch = $this->getBatch();
-
-		$batch->update(['name%s' => 'Test 200', '$rename' => ['points' => 'coords']], ['pr_id > %i' => '2']);
-
-		$batch->update(['domain%s' => 'Test 400', '$unset' => ['type']], ['domain' => 'beta'], TRUE, FALSE);
-
-		$exp1 = [
-			'q' => ['pr_id' => ['$gt' => 2]],
-			'u' => ['$rename' => ['points' => 'coords'], '$set' => ['name' => 'Test 200']],
-			'upsert' => FALSE,
-			'multi' => TRUE,
-		];
-
-		$exp2 = [
-			'q' => ['domain' => 'beta'],
-			'u' => ['$unset' => ['type' => ''], '$set' => ['domain' => 'Test 400']],
-			'upsert' => TRUE,
-			'multi' => FALSE,
-		];
-
-		Assert::same([$exp1, $exp2], $batch->getQueue('update'));
-	}
-
-	public function testDelete()
-	{
-		$batch = $this->getBatch();
-
-		$batch->delete(['pr_id > %i' => 2, 'domain = %s' => 'beta'], TRUE);
-		$batch->delete(['pr_id <= %i' => 10, 'domain' => ['beta', 'alpha']], FALSE);
-
-		$exp1 = [
-			'q' => ['$and' => [['pr_id' => ['$gt' => 2]], ['domain' => 'beta']]],
-			'limit' => 1,
-		];
-
-		$exp2 = [
-			'q' => ['$and' => [['pr_id' => ['$lte' => 10]], ['domain' => ['$in' => ['beta', 'alpha']]]]],
-			'limit' => 0
-		];
-
-		Assert::same([$exp1, $exp2], $batch->getQueue('delete'));
+		$this->batch = $this->getConnection()->getDriver()->getWriteBatch();
+		$this->queue = $this->getConnection()->createWriteBatch();
 	}
 
 	public function testExecute()
 	{
-		$log = [];
+		$this->loadQueue();
 
-		$this->getConnection()->getQuery()->onQuery[] = function ($coll, $oper, $param, $res) use (&$log) {
-			$log[] = [$coll, $oper, $param, $res];
-		};
+		$result = $this->batch->write('test_batch', $this->queue);
 
-		$batch = $this->getBatch();
+		Assert::type('array', $result[Result::INSERTED_IDS]);
+		Assert::count(1, $result[Result::INSERTED_IDS]);
 
-		$batch->insert($data1 = [
+		Assert::type('array', $result[Result::UPSERTED_IDS]);
+		Assert::count(1, $result[Result::UPSERTED_IDS]);
+
+		unset($result[Result::INSERTED_IDS]);
+		unset($result[Result::UPSERTED_IDS]);
+
+		$expected = [
+			Result::UPDATED => 3,
+			Result::INSERTED => 1,
+			Result::MATCHED => 3,
+			Result::UPSERTED => 1,
+			Result::DELETED => 2
+		];
+
+		Assert::equal($expected, $result);
+	}
+
+	private function loadQueue()
+	{
+		$this->queue->insert([
 			'pr_id' => 4,
 			'name' => 'Test 8',
 			'domain' => 'beta',
@@ -123,85 +67,11 @@ class WriteBatchTest extends DriverTestCase
 			'type' => 10
 		]);
 
-		$batch->update(['name' => 'Test 200', '$rename' => ['points' => 'coords']], ['pr_id' => 2]);
+		$this->queue->update(['name' => 'Test 200', '$rename' => ['points' => 'coords']], ['pr_id' => 2]);
 
-		$batch->delete(['pr_id' => 1], FALSE);
+		$this->queue->update(['pr_id' => '2', 'name' => 'Test 7', 'domain' => 'gama'], ['domain' => 'gama'], TRUE);
 
-		$result = $batch->execute();
-
-		Assert::same([
-			"inserted" => 1,
-			"matched" => 3,
-			"modified" => 3,
-			"upserted" => 0,
-			"removed" => 2], $result);
-
-		Assert::same($this->getExpectedLog(), $log);
-	}
-
-	public function testReset()
-	{
-		$batch = $this->getBatch();
-
-		$batch->insert(['pr_id' => 4, 'name' => 'Test 8', 'domain' => 'beta']);
-
-		$batch->update(['name' => 'Test 200', '$rename' => ['points' => 'coords']], ['pr_id' => 2]);
-
-		$batch->delete(['pr_id' => 1], FALSE);
-
-		$queue = $batch->getQueue();
-
-		Assert::count(1, $queue['insert']);
-		Assert::count(1, $queue['update']);
-		Assert::count(1, $queue['delete']);
-
-		$batch->reset();
-
-		Assert::same(['insert' => [], 'update' => [], 'delete' => []], $batch->getQueue());
-	}
-
-	public function testGetUpserted()
-	{
-		$batch = $this->getBatch();
-
-		$batch->update(['pr_id' => 4, 'name' => 'Test 8', 'domain' => 'beta'], ['type' => 20], TRUE);
-
-		$result = $batch->execute();
-
-		Assert::same(['matched' => 0, 'modified' => 0, 'upserted' => 1], $result);
-
-		$upserted = $batch->getUpserted();
-
-		Assert::type('array', $upserted);
-		Assert::count(1, $upserted);
-		Assert::type('string', reset($upserted));
-		Assert::type('int', key($upserted));
-	}
-
-	######################### data provider #########################3
-
-	public function getExpectedLog()
-	{
-		return [
-			[
-				'test_batch',
-				'insert - batch',
-				['w' => 1],
-				['inserted' => 1],
-			],
-			[
-				'test_batch',
-				'update - batch',
-				['w' => 1],
-				['matched' => 3, 'modified' => 3, 'upserted' => 0],
-			],
-			[
-				'test_batch',
-				'delete - batch',
-				['w' => 1],
-				['removed' => 2],
-			]
-		];
+		$this->queue->delete(['pr_id' => 1], TRUE);
 	}
 
 }

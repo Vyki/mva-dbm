@@ -11,16 +11,18 @@ class DriverTestCase extends TestCase
 
 	/** @var Connection */
 	private $connection;
+	
+	protected $dbname = 'mva_test';
 
 	public function loadData($collection = 'test')
 	{
 		Environment::lock("data-$collection", TEMP_DIR);
-		exec("mongoimport --db mva_test --drop --collection $collection < " . __DIR__ . "/../cases/test.txt");
+		exec("mongoimport --db $this->dbname --drop --collection $collection < " . __DIR__ . "/../cases/test.txt");
 	}
 
 	protected function createConnection(array $params = [])
 	{
-		$options = array_merge(['database' => 'mva_test'], $params, Environment::loadData());
+		$options = array_merge(['database' => $this->dbname], $params, Environment::loadData());
 		return new Connection($options);
 	}
 

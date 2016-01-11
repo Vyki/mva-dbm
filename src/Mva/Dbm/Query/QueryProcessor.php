@@ -6,10 +6,9 @@
  * @link       https://github.com/Vyki/mva-dbm
  */
 
-namespace Mva\Dbm\Platform\Mongo;
+namespace Mva\Dbm\Query;
 
-use Nette,
-	Mva\Dbm\Helpers,
+use Mva\Dbm\Helpers,
 	Mva\Dbm\Driver\IDriver,
 	Mva\Dbm\InvalidArgumentException;
 
@@ -17,7 +16,7 @@ use Nette,
  * Prepares query, projection and parameters.
  * ParamBuilder::processModifier is inspired by https://github.com/nextras/dbal by Jan Skrasek
  */
-class MongoQueryProcessor extends Nette\Object
+class QueryProcessor
 {
 
 	private $cmd = '$';
@@ -39,10 +38,10 @@ class MongoQueryProcessor extends Nette\Object
 		'not_in' => 'nin'
 	];
 
-	public function __construct(IDriver $driver)
+	public function __construct(IDriver $driver, $cmd = '$')
 	{
 		$this->driver = $driver;
-		$this->cmd = ini_get('mongo.cmd') ? : $this->cmd;
+		$this->cmd = (string) $cmd;
 	}
 
 	public function formatCmd($cmd)
@@ -52,7 +51,7 @@ class MongoQueryProcessor extends Nette\Object
 
 	public function processSelect(array $items)
 	{
-		if (!array_key_exists(0, $items)) {
+		if (empty($items) || !array_key_exists(0, $items)) {
 			return $items;
 		}
 
@@ -69,6 +68,26 @@ class MongoQueryProcessor extends Nette\Object
 		}
 
 		return $select;
+	}
+
+	public function processOrder(array $items)
+	{
+		if (empty($items) || !array_key_exists(0, $items)) {
+			return $items;
+		}
+
+		$order = [];
+
+		foreach ($items as $item) {
+			if (is_string($item) && preg_match('#^(.*)\s+(ASC|DESC)$#i', $item, $part)) {
+				$order[$part[1]] = $part[2] === 'ASC' ? IQuery::ORDER_ASC : IQuery::ORDER_DESC;
+				continue;
+			}
+
+			throw new InvalidArgumentException("Invalid order parameter: " . (is_scalar($item) ? $item : gettype($item)));
+		}
+
+		return $order;
 	}
 
 	/**
@@ -115,6 +134,10 @@ class MongoQueryProcessor extends Nette\Object
 	 */
 	public function processCondition(array $conditions, $depth = 0)
 	{
+		if (empty($conditions)) {
+			return [];
+		}
+
 		$parsed = [];
 
 		foreach ($conditions as $key => $condition) {

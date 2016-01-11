@@ -6,11 +6,10 @@
  * @link       https://github.com/Vyki/mva-dbm
  */
 
-namespace Mva\Dbm\Platform\Mongo;
+namespace Mva\Dbm\Query;
 
-use Nette,
-	Mva\Dbm\Query\IQuery,
-	Mva\Dbm\Query\IQueryBuilder;
+use Mva\Dbm\Query\IQuery,
+	Mva\Dbm\MemberAccessException;
 
 /**
  * MongoQueryBuilder is inspired by Nette\Database https://github.com/nette/database by Jakub Vrana, Jan Skrasek, David Grudl
@@ -24,7 +23,7 @@ use Nette,
  * @property-read array $select
  * @property-read array $having
  */
-class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
+class QueryBuilder
 {
 
 	/** @var string command prefix */
@@ -57,10 +56,9 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 	/** @var int Records offset */
 	private $offset;
 
-	public function __construct($name = '')
+	public function __construct($cmd = '$')
 	{
-		$this->cmd = ini_get('mongo.cmd') ? : '$';
-		$this->from($name);
+		$this->cmd = (string) $cmd;
 	}
 
 	public function from($name)
@@ -139,11 +137,8 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 		foreach ((array) $items as $key => $item) {
 			if (is_string($key)) {
 				$this->order[$key] = empty($item) || $item < 0 ? -1 : 1;
-				continue;
-			}
-
-			if (preg_match('#^(.*)\s+(ASC|DESC)$#i', $item, $part)) {
-				$this->order[$part[1]] = $part[2] === 'ASC' ? 1 : -1;
+			} else {
+				$this->order[] = $item;
 			}
 		}
 
@@ -298,15 +293,15 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 		$options = [];
 
 		if ($limit = $this->getLimit()) {
-			$options[IQuery::SELECT_LIMIT] = $limit;
+			$options[IQuery::LIMIT] = $limit;
 		}
 
 		if ($offset = $this->getOffset()) {
-			$options[IQuery::SELECT_OFFSET] = $offset;
+			$options[IQuery::OFFSET] = $offset;
 		}
 
 		if (($sort = $this->getOrder()) && !empty($sort)) {
-			$options[IQuery::SELECT_ORDER] = $sort;
+			$options[IQuery::ORDER] = $sort;
 		}
 
 		return [$this->getSelect(), $this->getWhere(), $options];
@@ -347,7 +342,7 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 		return $query;
 	}
 
-	public function importConditions(IQueryBuilder $builder)
+	public function importConditions(QueryBuilder $builder)
 	{
 		$this->where = $builder->where;
 	}
@@ -357,6 +352,17 @@ class MongoQueryBuilder extends Nette\Object implements IQueryBuilder
 	private function formatCmd($cmd)
 	{
 		return $this->cmd . $cmd;
+	}
+
+	public function __get($name)
+	{
+		$getter = 'get' . ucfirst($name);
+
+		if (method_exists($this, $getter)) {
+			return $this->{$getter}();
+		}
+
+		throw new MemberAccessException("Property '$name' does not exist");
 	}
 
 }

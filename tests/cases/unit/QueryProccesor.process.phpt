@@ -6,11 +6,11 @@ use Mockery,
 	Tester\Assert,
 	Mva\Dbm\Driver\IDriver,
 	Dbm\Tests\UnitTestCase,
-	Mva\Dbm\Platform\Mongo\MongoQueryProcessor;
+	Mva\Dbm\Query\QueryProcessor;
 
 require __DIR__ . "/../../bootstrap.php";
 
-class MongoProcessorProcessTest extends UnitTestCase
+class QueryProcessorProcessTest extends UnitTestCase
 {
 
 	/** @var IDriver */
@@ -24,7 +24,7 @@ class MongoProcessorProcessTest extends UnitTestCase
 		parent::setUp();
 
 		$this->driver = Mockery::mock(IDriver::class);
-		$this->preprocessor = new MongoQueryProcessor($this->driver);
+		$this->preprocessor = new QueryProcessor($this->driver);
 	}
 
 	function testProcessSelect()
@@ -38,6 +38,23 @@ class MongoProcessorProcessTest extends UnitTestCase
 		Assert::same($select1, $this->preprocessor->processSelect($select2));
 	}
 
+	function testProcessOrder()
+	{
+		$order1 = ['a' => 1, 'b' => -1];
+		$order2 = ['a ASC', 'b DESC'];
+
+		Assert::equal($order1, $this->preprocessor->processOrder($order1));
+		Assert::equal($order1, $this->preprocessor->processOrder($order2));
+
+		Assert::exception(function() {
+			$this->preprocessor->processOrder(['a KFC', 'b DESC']);
+		}, '\Mva\Dbm\InvalidArgumentException', 'Invalid order parameter: a KFC');
+
+		Assert::exception(function() {
+			$this->preprocessor->processOrder([['a', 'b'], 'b DESC']);
+		}, '\Mva\Dbm\InvalidArgumentException', 'Invalid order parameter: array');
+	}
+
 	function testProcessData()
 	{
 		$actual = $this->preprocessor->processData([
@@ -48,7 +65,7 @@ class MongoProcessorProcessTest extends UnitTestCase
 			'%%message%%s' => 'test',
 			'%%message%%%s' => 'test',
 			'samples%f[]' => ['1', '3.3', 3.4, 3],
-			'_id' => new \MongoId('54ccf5639ab253f598d6b4a5'),
+			'_id' => '54ccf5639ab253f598d6b4a5',
 		]);
 
 		$expected = [
@@ -65,9 +82,11 @@ class MongoProcessorProcessTest extends UnitTestCase
 		Assert::same($expected, $actual);
 
 		$return = (object) ['sec' => 946684923];
-		$this->driver->shouldReceive('convertToDriver')->once()->with(946684923, 'dt')->andReturn($return);
-		$expdate = $this->preprocessor->processData(['date' => new \DateTime('2000-01-01 01:02:03')]);
 		
+		$this->driver->shouldReceive('convertToDriver')->once()->with(946684923, 'dt')->andReturn($return);
+		
+		$expdate = $this->preprocessor->processData(['date' => new \DateTime('2000-01-01 01:02:03')]);
+
 		Assert::same($return, $expdate['date']);
 	}
 
@@ -194,7 +213,7 @@ class MongoProcessorProcessTest extends UnitTestCase
 		Assert::same(['domain' => ['$in' => $testArray1]], $this->preprocessor->processCondition($cond13));
 	}
 
-	function testProcessCondition_or()
+	function testProcessConditionOr()
 	{
 		$cond = ['$or' => ['size > 10', 'score < %i' => 20, 'domain EXISTS' => TRUE]];
 
@@ -206,7 +225,7 @@ class MongoProcessorProcessTest extends UnitTestCase
 			]], $this->preprocessor->processCondition($cond));
 	}
 
-	function testProcessCondition_elemMatch()
+	function testProcessConditionElemMatch()
 	{
 		$results = [
 			'results' => [
@@ -234,7 +253,7 @@ class MongoProcessorProcessTest extends UnitTestCase
 		Assert::same($results, $this->preprocessor->processCondition($cond2));
 	}
 
-	function testProcessCondition_like()
+	function testProcessConditionLike()
 	{
 		$this->driver->shouldReceive('convertToDriver')->once()->with('/test$/i', 're')->andReturn('regexpA');
 		$cond1 = ['domain LIKE' => '%test'];
@@ -255,7 +274,7 @@ class MongoProcessorProcessTest extends UnitTestCase
 		Assert::same($regx3['domain'], 'regexpC');
 	}
 
-	function testProcessCondition_structure()
+	function testProcessConditionStructure()
 	{
 		$conds1 = [['domain = bus', 'size > %i' => '45'], ['pr_id IN %i[]' => [1, 2]]];
 
@@ -277,7 +296,7 @@ class MongoProcessorProcessTest extends UnitTestCase
 		Assert::same($conds3, $this->preprocessor->processCondition($conds4));
 	}
 
-	function testIncompleteCondition()
+	function testProcessConditionIncomplete()
 	{
 		$cond1 = ['domain = %s'];
 
@@ -294,5 +313,5 @@ class MongoProcessorProcessTest extends UnitTestCase
 
 }
 
-$test = new MongoProcessorProcessTest();
+$test = new QueryProcessorProcessTest();
 $test->run();

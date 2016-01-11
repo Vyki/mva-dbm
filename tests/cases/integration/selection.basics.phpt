@@ -7,141 +7,133 @@
 
 namespace Dbm\Tests\Collection;
 
-use Mva,
-	Tester\Assert,
+use Tester\Assert,
 	Dbm\Tests\DriverTestCase,
-	Mva\Dbm\Collection\Document;
+	Mva\Dbm\Collection\Selection,
+	Mva\Dbm\Collection\Document\Document;
 
 $connection = require __DIR__ . "/../../bootstrap.php";
 
 class SelectionBasicsTest extends DriverTestCase
 {
 
+	/** @var Selection */
+	private $selection;
+
 	protected function setUp()
 	{
-		$this->loadData('test_find');
+		$this->loadData('test_selection_basics');
+		$this->selection = $this->getConnection()->getSelection('test_selection_basics');
 	}
 
-	/** @return Mva\Mongo\Selection */
-	function getSelection()
+	function testWherePrimary()
 	{
-		return $this->getConnection()->getSelection('test_find');
-	}
+		$this->selection->wherePrimary('5bce658d5b');
 
-	function testWherePrimary_SetPrimary()
-	{
-		$collection = $this->getSelection();
+		$this->selection->setPrimary('pid');
+		$this->selection->wherePrimary('4bceacb8db');
 
-		$collection->wherePrimary('5bce658d5b');
-
-		$collection->setPrimary('pid');
-		$collection->wherePrimary('4bceacb8db');
-
-		$collection->setPrimary('domain_id', '%s');
-		$collection->wherePrimary('abce658d5c');
+		$this->selection->setPrimary('domain_id', '%s');
+		$this->selection->wherePrimary('abce658d5c');
 
 		Assert::same([
 			['_id = %oid' => '5bce658d5b'],
 			['pid = %oid' => '4bceacb8db'],
-			['domain_id = %s' => 'abce658d5c']], $collection->queryBuilder->where);
+			['domain_id = %s' => 'abce658d5c']], $this->selection->getQueryBuilder()->where);
 	}
 
 	function testWhere()
 	{
-		$collection = $this->getSelection();
+		$this->selection->where('size < %i', 100);
 
-		$collection->where('size < %i', 100);
-
-		$collection->where([
+		$this->selection->where([
 			['pr_id' => 2],
 			['domain' => ['alpha', 'beta']]
 		]);
 
-		Assert::count(3, $collection->queryBuilder->where);
+		Assert::count(3, $this->selection->getQueryBuilder()->where);
 	}
 
 	function testSelect()
 	{
-		$collection = $this->getSelection();
+		$this->selection->select('domain', '!type');
 
-		$collection->select('domain', '!type');
-
-		Assert::same(['domain', '!type'], $collection->queryBuilder->select);
+		Assert::same(['domain', '!type'], $this->selection->getQueryBuilder()->select);
 	}
 
 	function testFetch()
 	{
-		$collection = $this->getSelection();
+		$this->selection->select('domain', 'type', 'name');
 
-		$collection->select('domain', 'type', 'name');
+		$this->selection->where(['pr_id' => 2, 'size' => 10]);
 
-		$collection->where(['pr_id' => 2, 'size' => 10]);
-
-		$document = $collection->fetch();
+		$document = $this->selection->fetch();
 
 		Assert::true($document instanceof Document);
 
 		Assert::same(['_id', 'name', 'domain', 'type'], array_keys($document->toArray()));
 	}
 
-	function testFetchAll()
+	function testGet()
 	{
-		$collection = $this->getSelection();
+		$item = $this->selection->get('54ccf3509ab253f598d6b4a0');
+		Assert::count(7, $item);
+		Assert::same($item->domain, 'alpha');
+		Assert::same($item->type, 9);
+	}
 
-		$collection->select('domain', 'type', 'name');
+	function testIterator()
+	{
+		$this->selection->select('domain', 'type', 'name');
 
-		$collection->where('pr_id', 2);
+		$this->selection->where('pr_id', 2);
 
-		$i = 0;
-
-		foreach ($collection as $row) {
-			++$i;
+		foreach ($this->selection as $index => $row) {
 			Assert::true($row instanceof Document);
 			Assert::same(['_id', 'name', 'domain', 'type'], array_keys($row->toArray()));
 		}
 
-		Assert::equal(3, $i);
+		Assert::equal(2, $index);
+	}
+
+	function testFetchAll()
+	{
+		$this->selection->select('domain', 'type', 'name');
+
+		$this->selection->where('pr_id', 2);
+
+		$data = $this->selection->fetchAll();
+
+		Assert::type('array', $data);
+
+		foreach ($data as $index => $row) {
+			Assert::true($row instanceof Document);
+			Assert::equal(['_id', 'name', 'domain', 'type'], array_keys($row->toArray()));
+		}
+
+		Assert::same(2, $index);
 	}
 
 	function testFetchPairs()
 	{
-		$collection = $this->getSelection();
-
-		$collection->select('domain', 'pr_id', '!_id')->where('pr_id', 1);
+		$this->selection->select('domain', 'pr_id', '!_id')->where('pr_id', 1)->order('domain ASC');
 
 		$expected1 = ['alpha' => ['pr_id' => 1, 'domain' => 'alpha'], 'beta' => ['pr_id' => 1, 'domain' => 'beta']];
 		$expected2 = array_keys($expected1);
 
-		foreach ($collection->fetchPairs('domain') as $index => $value) {
-			Assert::same($expected1[$index], $value->toArray());
+		foreach ($this->selection->fetchPairs('domain') as $index => $value) {
+			Assert::equal($expected1[$index], $value->toArray());
 		}
 
-		foreach ($collection->fetchPairs(NULL, 'domain') as $index => $value) {
-			Assert::same($expected2[$index], $value);
+		foreach ($this->selection->fetchPairs(NULL, 'domain') as $index => $value) {
+			Assert::equal($expected2[$index], $value);
 		}
 
-		Assert::same(['alpha' => 1, 'beta' => 1], $collection->fetchPairs('domain', 'pr_id'));
-	}
-
-	function testFetchAssoc()
-	{
-		$collection = $this->getSelection();
-
-		$collection->select('domain', 'pr_id');
-
-		$data = $collection->fetchAssoc('domain[]');
-
-		Assert::same(['alpha', 'beta'], array_keys($data));
-
-		Assert::count(4, $data['alpha']);
-
-		Assert::count(2, $data['beta']);
+		Assert::equal(['alpha' => 1, 'beta' => 1], $this->selection->fetchPairs('domain', 'pr_id'));
 	}
 
 	function testInsert()
 	{
-		$collection = $this->getSelection();
-
 		$insert = [
 			'pr_id' => 3,
 			'name' => 'Test 7',
@@ -151,26 +143,21 @@ class SelectionBasicsTest extends DriverTestCase
 			'type' => 10
 		];
 
-		$ret = $collection->insert($insert);
+		$ret = $this->selection->insert($insert);
 
 		Assert::true($ret instanceof Document);
 		Assert::true(isset($ret->_id));
-		Assert::true(isset($collection[$ret->_id]));
 
-		$data = $collection->wherePrimary($ret->_id)->fetch()->toArray();
+		$data = $this->selection->get($ret->_id);
 
-		$retarr = $ret->toArray();
-
-		Assert::same(ksort($retarr, SORT_STRING), ksort($data, SORT_STRING));
+		Assert::equal($data, $ret);
 	}
 
 	function testUpdate()
 	{
-		$collection = $this->getSelection();
+		$ret = $this->selection->where('name', 'Test 6')->update(['domain' => 'alpha']);
 
-		$ret = $collection->where('name', 'Test 6')->update(['domain' => 'alpha']);
-
-		$data = $collection->fetch();
+		$data = $this->selection->fetch();
 
 		Assert::same($ret, 1);
 		Assert::same('alpha', $data->domain);
@@ -178,8 +165,6 @@ class SelectionBasicsTest extends DriverTestCase
 
 	function testUpsert()
 	{
-		$collection = $this->getSelection();
-
 		$upsert = [
 			'pr_id' => 3,
 			'name' => 'Test 7',
@@ -189,31 +174,45 @@ class SelectionBasicsTest extends DriverTestCase
 			'type' => 10
 		];
 
-		$ret = $collection->where('domain', 'theta')->update($upsert, TRUE);
+		$ret = $this->selection->where('domain', 'theta')->update($upsert, TRUE);
 
 		Assert::true($ret instanceof Document);
 		Assert::true(isset($ret->_id));
-		Assert::true(isset($collection[$ret->_id]));
 
-		$data = $collection->wherePrimary($ret->_id)->fetch()->toArray();
+		$data = $this->selection->get($ret->_id);
 
-		$retarr = $ret->toArray();
+		Assert::equal($data, $ret);
+	}
 
-		Assert::same(ksort($retarr, SORT_STRING), ksort($data, SORT_STRING));
+	function testOrder()
+	{
+		$this->selection->select('domain', 'name', '!_id')->where('pr_id', 1);
+
+		$result1 = $this->selection->order('domain ASC')->fetchPairs('name', 'domain');
+		Assert::same($this->selection->getQueryBuilder()->order, ['domain ASC']);
+
+		$this->selection->order(NULL);
+		Assert::same($this->selection->getQueryBuilder()->order, []);
+
+		$result2 = $this->selection->order('name DESC')->fetchPairs('name', 'domain');
+		Assert::same($this->selection->getQueryBuilder()->order, ['name DESC']);
+
+		Assert::same(['Test 4' => 'alpha', 'Test 5' => 'beta'], $result1);
+		Assert::same(['Test 5' => 'beta', 'Test 4' => 'alpha'], $result2);
 	}
 
 	function testUpdateManipulation()
 	{
-		$collection = $this->getSelection();
-
-		$collection->where('pr_id', 1)->update([
+		$return = $this->selection->where('pr_id', 1)->update([
 			'size' => 40,
 			'$set' => ['name' => 'test update'],
 			'$unset' => ['domain'], //or 'domain' for singe item
 			'$rename' => ['type' => 'category']
 		]);
 
-		foreach ($collection as $data) {
+		Assert::same(2, $return);
+
+		foreach ($this->selection as $index => $data) {
 			Assert::same(40, $data->size);
 
 			Assert::same('test update', $data->name);
@@ -224,29 +223,8 @@ class SelectionBasicsTest extends DriverTestCase
 
 			Assert::false(isset($data->domain));
 		}
-	}
 
-	function testLimit()
-	{
-		$fullrecord = $this->getSelection()->where('pr_id', 2);
-
-		Assert::same(3, $fullrecord->count());
-
-		$limit1 = $this->getSelection()->limit(1, 1);
-		//gets second record
-		$first = $limit1->fetch();
-
-		$limit2 = $this->getSelection()->limit(2);
-		//skip first record
-		$limit2->fetch();
-		//gets second record
-		$second = $limit2->fetch();
-
-		Assert::same((string) $first->_id, (string) $second->_id);
-
-		Assert::same(1, $limit1->count());
-
-		Assert::same(2, $limit2->count());
+		Assert::same(1, $index);
 	}
 
 }

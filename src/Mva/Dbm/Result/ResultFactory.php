@@ -6,12 +6,12 @@
  * @link       https://github.com/Vyki/mva-dbm
  */
 
-namespace Mva\Dbm\Platform\Mongo;
+namespace Mva\Dbm\Result;
 
 use Mva\Dbm\Driver\IDriver,
 	Mva\Dbm\Result\IResultFactory;
 
-class MongoResultFactory implements IResultFactory
+class ResultFactory implements IResultFactory
 {
 
 	/** @var IDriver */
@@ -24,7 +24,7 @@ class MongoResultFactory implements IResultFactory
 
 	public function create($data)
 	{
-		return new MongoResult($this->driver, $data);
+		return new Result($this->driver, $data);
 	}
 
 }
