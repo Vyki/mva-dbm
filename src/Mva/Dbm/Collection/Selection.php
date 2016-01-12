@@ -409,7 +409,7 @@ class Selection implements \IteratorAggregate, \Countable
 
 		$result = $this->query->find($this->name, $fields, $criteria, $options);
 
-		while ($data = $result->fetch()) {
+		foreach ($result as $data) {
 			$this->result[] = $this->createDocument($data);
 		}
 	}

@@ -314,10 +314,7 @@ class SelectionTest extends UnitTestCase
 		];
 
 		$result = Mockery::mock(IResult::class);
-		$result->shouldReceive('fetch')->withNoArgs()->once()->andReturn($data[0]);
-		$result->shouldReceive('fetch')->withNoArgs()->once()->andReturn($data[1]);
-		$result->shouldReceive('fetch')->withNoArgs()->once()->andReturn($data[2]);
-		$result->shouldReceive('fetch')->withNoArgs()->once()->andReturn(FALSE);
+		$result->shouldReceive('getIterator')->withNoArgs()->once()->andReturn(new \ArrayIterator($data));
 
 		$this->documentFactory->shouldReceive('create')->with($data[0])->once()->andReturn((object) $data[0]);
 		$this->documentFactory->shouldReceive('create')->with($data[1])->once()->andReturn((object) $data[1]);

@@ -148,9 +148,12 @@ class SelectionBasicsTest extends DriverTestCase
 		Assert::true($ret instanceof Document);
 		Assert::true(isset($ret->_id));
 
-		$data = $this->selection->get($ret->_id);
-
-		Assert::equal($data, $ret);
+		$i = 0;
+		foreach ($this->selection->get($ret->_id) as $key => $item) { // unusable Asser::equal because of HHVM
+			++$i;
+			Assert::same($item, $ret[$key]);
+		}
+		Assert::same(7, $i);
 	}
 
 	function testUpdate()
@@ -179,9 +182,12 @@ class SelectionBasicsTest extends DriverTestCase
 		Assert::true($ret instanceof Document);
 		Assert::true(isset($ret->_id));
 
-		$data = $this->selection->get($ret->_id);
-
-		Assert::equal($data, $ret);
+		$i = 0;
+		foreach ($this->selection->get($ret->_id) as $key => $item) { // unusable Asser::equal because of HHVM
+			++$i;
+			Assert::same($item, $ret[$key]);
+		}
+		Assert::same(7, $i);
 	}
 
 	function testOrder()
@@ -214,14 +220,15 @@ class SelectionBasicsTest extends DriverTestCase
 
 		foreach ($this->selection as $index => $data) {
 			Assert::same(40, $data->size);
-
 			Assert::same('test update', $data->name);
-
-			Assert::false(isset($data->type));
-
-			Assert::true(isset($data->category));
-
 			Assert::false(isset($data->domain));
+
+			if (defined('HHVM_VERSION')) {
+				continue;
+			}
+			// $rename doesnt work in HHVM
+			Assert::false(isset($data->type));
+			Assert::true(isset($data->category));
 		}
 
 		Assert::same(1, $index);

@@ -43,12 +43,11 @@ class MongodbQueryAdapter implements IQueryAdapter
 
 			$cursor = $this->driver->execute($collection, $query);
 			$cursor->setTypeMap(['root' => 'array', 'document' => 'array']);
-			$result = $cursor->toArray();
 		} catch (RuntimeException $e) {
 			$this->createException($e);
 		}
 
-		return $result;
+		return $cursor;
 	}
 
 	public function count($collection, array $criteria = [], array $options = [])
